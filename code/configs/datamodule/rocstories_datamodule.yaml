@@ -1,0 +1,9 @@
+_target_: src.datamodules.rocstories_datamodule.ROCStoriesDataModule
+
+data_dir: ${data_dir}  # data_dir is specified in config.yaml
+batch_size: 32
+percentage: 100
+shuffle: True
+train_path: ['ROCStories_spring2016.csv', 'ROCStories_winter2017.csv']
+#val_path: ['cloze_test_val_spring2016.csv', 'cloze_test_val_winter2018.csv']
+processed_data_dir: 'processed_rocstories'

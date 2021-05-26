@@ -1,0 +1,7 @@
+_target_: src.datamodules.gigaword_datamodule.GigaWordDataModule
+
+data_dir: ${data_dir}  # data_dir is specified in config.yaml
+batch_size: 32
+train_path: 'gigaword_train.csv'
+val_path: 'gigaword_valid.csv'
+processed_data_dir: 'processed_gigaword'
