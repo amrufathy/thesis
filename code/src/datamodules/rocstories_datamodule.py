@@ -108,6 +108,8 @@ class ROCStoriesDataModule(LightningDataModule):
             )
 
             self.tokenized_dataset.save_to_disk(self.processed_dataset_path)
+
+            del dataset, train_test_data, test_val_data
         else:
             self.tokenized_dataset = load_from_disk(self.processed_dataset_path)
 
@@ -123,8 +125,6 @@ class ROCStoriesDataModule(LightningDataModule):
                 "summary_labels",
             ],
         )
-
-        del dataset, train_test_data, test_val_data
 
     def train_dataloader(self):
         return DataLoader(

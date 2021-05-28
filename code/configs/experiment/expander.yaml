@@ -1,0 +1,28 @@
+# @package _global_
+
+# to execute this experiment run:
+# python run.py experiment=expander.yaml
+
+defaults:
+  - override /trainer: minimal.yaml  # override trainer to null so it's not loaded from main config defaults...
+  - override /model: expander.yaml
+  - override /datamodule: rocstories.yaml
+  - override /callbacks: wandb.yaml  # choose callbacks from 'configs/callbacks/'
+  - override /logger: wandb.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 5
+  profiler: "simple"
+  log_gpu_memory: True
+
+datamodule:
+  batch_size: 32
+  percentage: 100  # percentage of dataset to load
+  shuffle: True  # `True` shuffles dataset every epoch
+  load_dataset_from_file: True
