@@ -8,7 +8,7 @@ defaults:
   - callbacks: wandb.yaml  # set this to null if you don't want to use callbacks
   - logger: wandb.yaml  # set logger here or use command line (e.g. `python run.py logger=wandb`)
 
-  - experiment: compressor_experiment.yaml
+  - experiment: compressor.yaml
   - hparams_search: null
 
   - hydra: default.yaml
