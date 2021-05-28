@@ -1,6 +1,4 @@
 _target_: src.models.cycle_model.CycleModel
 
-input_size: 784
-output_size: 10
-lr: 0.001
-weight_decay: 0.0005
+expander_model_name: 'facebook/bart-base'
+compressor_model_name: 'facebook/bart-base'

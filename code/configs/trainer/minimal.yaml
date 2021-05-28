@@ -7,7 +7,7 @@ tpu_cores: null
 min_epochs: 1
 max_epochs: 5
 precision: 16
-#fast_dev_run: True
+# fast_dev_run: True
 profiler: "simple"
 log_gpu_memory: True
 deterministic: True

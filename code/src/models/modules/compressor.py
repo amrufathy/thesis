@@ -1,20 +1,22 @@
-from torch import nn, argmax, tensor
+from typing import Dict, List
+
+from sacrebleu import corpus_bleu
+from torch import argmax, nn, tensor
+from torchmetrics.functional import accuracy
 from transformers import BartForConditionalGeneration, BartTokenizerFast
 from transformers.models.bart.modeling_bart import shift_tokens_right
-from typing import Dict, List
-from torchmetrics.functional import accuracy
-from sacrebleu import corpus_bleu
 
 
 class Compressor(nn.Module):
-    def __init__(self, tokenizer: BartTokenizerFast = None, *args, **kwargs):
+    def __init__(self, model_name_or_path: str, tokenizer: BartTokenizerFast = None):
         super().__init__()
 
-        self.compressor: BartForConditionalGeneration = BartForConditionalGeneration.from_pretrained(
-            'facebook/bart-base')
+        self.compressor: BartForConditionalGeneration = (
+            BartForConditionalGeneration.from_pretrained(model_name_or_path)
+        )
 
         if not tokenizer:
-            self.tokenizer = BartTokenizerFast.from_pretrained('facebook/bart-base')
+            self.tokenizer = BartTokenizerFast.from_pretrained(model_name_or_path)
         else:
             self.tokenizer = tokenizer
 
@@ -27,20 +29,31 @@ class Compressor(nn.Module):
         """
 
         # shift `decoder ids` & `mask` to the right
-        summary_ids_shifted = shift_tokens_right(dict_input['summary_ids'], self.tokenizer.pad_token_id,
-                                                 self.tokenizer.eos_token_id)
+        summary_ids_shifted = shift_tokens_right(
+            dict_input["summary_ids"],
+            self.tokenizer.pad_token_id,
+            self.tokenizer.eos_token_id,
+        )
         # summary_msk_shifted = shift_tokens_right(dict_input['summary_attn_msk'], 0, 1)
 
         # feed the model
-        compression_results = self.compressor(**{
-            'input_ids': dict_input['story_ids'],
-            'attention_mask': dict_input['story_attn_msk'],  # TODO: check if right in case of used within cycle
-            'decoder_input_ids': summary_ids_shifted,
-            'decoder_attention_mask': dict_input['summary_attn_msk'],
-            'labels': dict_input['summary_labels']
-        }, use_cache=False)
+        compression_results = self.compressor(
+            **{
+                "input_ids": dict_input["story_ids"],
+                "attention_mask": dict_input[
+                    "story_attn_msk"
+                ],  # TODO: check if right in case of used within cycle
+                "decoder_input_ids": summary_ids_shifted,
+                "decoder_attention_mask": dict_input["summary_attn_msk"],
+                "labels": dict_input["summary_labels"],
+            },
+            use_cache=False
+        )
 
-        compression_loss, compression_logits = compression_results.loss, compression_results.logits
+        compression_loss, compression_logits = (
+            compression_results.loss,
+            compression_results.logits,
+        )
 
         del summary_ids_shifted, compression_results
 
@@ -48,32 +61,44 @@ class Compressor(nn.Module):
 
         # accuracy
         generated_summary_ids = argmax(compression_logits, dim=-1)
-        masked_labels = dict_input['summary_labels'].detach().clone()
-        masked_labels[masked_labels[:, :] == -100] = self.tokenizer.pad_token_id  # restore padding token id
+        masked_labels = dict_input["summary_labels"].detach().clone()
+        masked_labels[
+            masked_labels[:, :] == -100
+        ] = self.tokenizer.pad_token_id  # restore padding token id
         acc = accuracy(generated_summary_ids, masked_labels)
 
         # bleu
-        predictions = self.tokenizer.batch_decode(generated_summary_ids, skip_special_tokens=True)
-        references = self.tokenizer.batch_decode(masked_labels, skip_special_tokens=True)
+        predictions = self.tokenizer.batch_decode(
+            generated_summary_ids, skip_special_tokens=True
+        )
+        references = self.tokenizer.batch_decode(
+            masked_labels, skip_special_tokens=True
+        )
         # predictions = self.adjust_padding(predictions, references)
 
         bleu = corpus_bleu(predictions, [references])
 
         del generated_summary_ids, masked_labels, predictions, references
 
-        return {'loss': compression_loss, 'logits': compression_logits,
-                'accuracy': acc, 'bleu': tensor(bleu.score, device='cuda')}
+        return {
+            "loss": compression_loss,
+            "logits": compression_logits,
+            "accuracy": acc,
+            "bleu": tensor(bleu.score, device="cuda"),
+        }
 
     def generate(self, conditioning_sentences: List[str]) -> List[str]:
         """
         Generate summaries depending on conditional input stories
         """
 
-        tokenized_sentences = self.tokenizer(conditioning_sentences, padding='longest', return_tensors='pt')
-
+        tokenized_sentences = self.tokenizer(
+            conditioning_sentences, padding="longest", return_tensors="pt"
+        )
         generated_ids = self.compressor.generate(**tokenized_sentences)
-
-        generated_summaries = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+        generated_summaries = self.tokenizer.batch_decode(
+            generated_ids, skip_special_tokens=True
+        )
 
         return generated_summaries
 
@@ -91,11 +116,11 @@ class Compressor(nn.Module):
             if len(tp) == len(tr):
                 adjusted_paddings.append(p)
             elif len(tp) > len(tr):
-                ts = tp[:len(tr)]
+                ts = tp[: len(tr)]
                 adjusted_paddings.append(self.tokenizer.convert_tokens_to_string(ts))
             else:  # len(tp) < len(tr)
                 # Ġ character represents a whitespace in the byte-level representation
-                ts = tp + ['Ġ' + self.tokenizer.pad_token] * (len(tr) - len(tp))
+                ts = tp + ["Ġ" + self.tokenizer.pad_token] * (len(tr) - len(tp))
                 adjusted_paddings.append(self.tokenizer.convert_tokens_to_string(ts))
 
             del tp, tr

@@ -34,6 +34,7 @@ sh
 scikit-learn
 seaborn
 pudb
+pandas
 # dvc
 
 # --------- NLP --------- #
