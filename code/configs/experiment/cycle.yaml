@@ -17,7 +17,7 @@ seed: 12345
 
 trainer:
   min_epochs: 1
-  max_epochs: 5
+  max_epochs: 6  # stops at `max_epochs` - 1
   profiler: "simple"
   log_gpu_memory: True
 
@@ -25,4 +25,9 @@ datamodule:
   batch_size: 8
   percentage: 100  # percentage of dataset to load
   shuffle: True  # `True` shuffles dataset every epoch
-  load_dataset_from_file: True
+  load_dataset_from_file: False
+
+callbacks:
+  model_checkpoint:
+    dirpath: "checkpoints/"
+    filename: "cycle-${now:%m-%d_%H-%M}-{epoch:02d}"

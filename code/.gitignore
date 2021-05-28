@@ -145,3 +145,7 @@ logs/
 wandb/
 .env
 .autoenv
+
+# Custom directories
+src/utils/artifacts/
+src/utils/wandb/
