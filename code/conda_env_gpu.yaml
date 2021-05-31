@@ -5,10 +5,13 @@ channels:
   - conda-forge
 
 dependencies:
-  - python=3.8
+  - python=3.7
   - pip
   - cudatoolkit
   - pytorch=1.8.1
   - torchvision=0.9.1
   - pip:
+      # Uncomment the following to install PyTorch XLA for colab TPU support
+      # - cloud-tpu-client==0.10
+      # - https://storage.googleapis.com/tpu-pytorch/wheels/torch_xla-1.8-cp37-cp37m-linux_x86_64.whl
       - -r requirements.txt

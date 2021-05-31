@@ -1,7 +1,7 @@
 from typing import Dict
 
 from sacrebleu import corpus_bleu
-from torch import argmax, nn, tensor
+from torch import argmax, cuda, device, nn, tensor
 from torch.nn.functional import cross_entropy
 from torchmetrics.functional import accuracy
 from transformers import BartTokenizerFast
@@ -20,6 +20,7 @@ class CycleArchitecture(nn.Module):
         self.compressor = Compressor(
             model_name_or_path=compressor_model_name, tokenizer=self.tokenizer
         )
+        self.device = device("cuda") if cuda.is_available() else device("cpu")
 
     def forward(self, dict_input: Dict) -> Dict:
         """
@@ -106,7 +107,7 @@ class CycleArchitecture(nn.Module):
             "exp_acc": expansion_accuracy,
             "comp_acc": compression_accuracy,
             # bleu
-            "bleu": tensor(bleu.score, device="cuda"),
+            "bleu": tensor(bleu.score, device=self.device),
             "exp_bleu": expansion_bleu,
             "comp_bleu": compression_bleu,
         }

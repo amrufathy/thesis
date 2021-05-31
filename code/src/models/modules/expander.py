@@ -1,7 +1,7 @@
 from typing import Dict, List
 
 from sacrebleu import corpus_bleu
-from torch import argmax, nn, tensor
+from torch import argmax, cuda, device, nn, tensor
 from torchmetrics.functional import accuracy
 from transformers import BartForConditionalGeneration, BartTokenizerFast
 from transformers.models.bart.modeling_bart import shift_tokens_right
@@ -14,6 +14,7 @@ class Expander(nn.Module):
         self.expander: BartForConditionalGeneration = (
             BartForConditionalGeneration.from_pretrained(model_name_or_path)
         )
+        self.device = device("cuda") if cuda.is_available() else device("cpu")
 
         if not tokenizer:
             self.tokenizer = BartTokenizerFast.from_pretrained(model_name_or_path)
@@ -82,7 +83,7 @@ class Expander(nn.Module):
             "loss": expansion_loss,
             "logits": expansion_logits,
             "accuracy": acc,
-            "bleu": tensor(bleu.score, device="cuda"),
+            "bleu": tensor(bleu.score, device=self.device),
         }
 
     def generate(self, conditioning_sentences: List[str]) -> List[str]:
