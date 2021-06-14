@@ -1,3 +1,5 @@
 _target_: src.models.compressor_model.CompressorModel
 
+name: 'Compressor'  # used for experiment logging
 model_name_or_path: 'facebook/bart-base'
+learning_rate: 5e-5

@@ -1,9 +1,10 @@
 import glob
 import os
 
-import wandb
 from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.loggers import LoggerCollection, WandbLogger
+
+import wandb
 
 
 def get_wandb_logger(trainer: Trainer) -> WandbLogger:

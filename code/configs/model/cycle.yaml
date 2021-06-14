@@ -1,4 +1,7 @@
 _target_: src.models.cycle_model.CycleModel
 
+name: 'Cycle'  # used for experiment logging
 expander_model_name: 'facebook/bart-base'
 compressor_model_name: 'facebook/bart-base'
+use_gumbel_softmax: False
+learning_rate: 5e-5

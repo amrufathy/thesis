@@ -1,8 +1,9 @@
 from typing import Dict
 
+import torch
 from sacrebleu import corpus_bleu
 from torch import argmax, cuda, device, nn, tensor
-from torch.nn.functional import cross_entropy
+from torch.nn.functional import cross_entropy, gumbel_softmax
 from torchmetrics.functional import accuracy
 from transformers import BartTokenizerFast
 
@@ -10,7 +11,12 @@ from src.models.modules import Compressor, Expander
 
 
 class CycleArchitecture(nn.Module):
-    def __init__(self, expander_model_name: str, compressor_model_name: str):
+    def __init__(
+        self,
+        expander_model_name: str,
+        compressor_model_name: str,
+        use_gumbel_softmax: bool,
+    ):
         super().__init__()
 
         self.tokenizer = BartTokenizerFast.from_pretrained("facebook/bart-base")
@@ -21,6 +27,7 @@ class CycleArchitecture(nn.Module):
             model_name_or_path=compressor_model_name, tokenizer=self.tokenizer
         )
         self.device = device("cuda") if cuda.is_available() else device("cpu")
+        self.use_gumbel_softmax = use_gumbel_softmax
 
     def forward(self, dict_input: Dict) -> Dict:
         """
@@ -42,9 +49,14 @@ class CycleArchitecture(nn.Module):
         )
 
         # overwrite dict_input['story_ids'] (original story ids) with generated_story_ids
-        generated_story_ids = argmax(
-            expansion_logits, dim=-1
-        )  # TODO: use gumbel softmax
+        if self.use_gumbel_softmax:
+            # WIP
+            # https://pytorch.org/docs/stable/nn.functional.html#gumbel-softmax
+            # Check: https://github.com/cbaziotis/seq3/blob/master/modules/modules.py#L515
+            generated_story_ids = gumbel_softmax(expansion_logits, dim=-1, hard=True)
+        else:
+            generated_story_ids = argmax(expansion_logits, dim=-1)
+
         dict_input["story_ids"] = generated_story_ids
 
         del expansion_results, generated_story_ids

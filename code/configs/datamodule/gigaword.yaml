@@ -2,6 +2,13 @@ _target_: src.datamodules.gigaword_datamodule.GigaWordDataModule
 
 data_dir: ${data_dir}  # data_dir is specified in config.yaml
 batch_size: 32
+percentage: 100  # percentage of dataset to load
+shuffle: True  # `True` shuffles dataset every epoch
+padding: 'max_length'  # padding strategy (check `Tokenizers` documentation)
+truncation: True  # truncation strategy (check `Tokenizers` documentation)
+max_story_length: 150  # max story length in tokens
+max_summary_length: 10  # max summary length in tokens
+load_dataset_from_file: False
 train_path: 'gigaword_train.csv'
 val_path: 'gigaword_valid.csv'
-processed_data_dir: 'processed_gigaword'
+processed_data_dir: '.processed_gigaword'

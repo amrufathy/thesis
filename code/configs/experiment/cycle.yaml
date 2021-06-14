@@ -17,9 +17,12 @@ seed: 12345
 
 trainer:
   min_epochs: 1
-  max_epochs: 6  # stops at `max_epochs` - 1
+  max_epochs: 5
   profiler: "simple"
   log_gpu_memory: True
+
+model:
+  use_gumbel_softmax: True
 
 datamodule:
   batch_size: 8

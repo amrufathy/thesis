@@ -1,12 +1,27 @@
 from os.path import join
 from typing import Dict, List, Union
 
+import numpy as np
 import pandas as pd
 import torch
 from datasets import DatasetDict, load_dataset, load_from_disk
 from pytorch_lightning import LightningDataModule
 from torch.utils.data.dataloader import DataLoader
 from transformers import BartTokenizerFast
+
+"""
+ROC dataset
+
+Statistics about story title length:
+(All numbers after tokenization)
+Max: 33, Mean: 5.05, Std Dev: 1.32, Median: 5.00,
+95 percentile: 7.0, 99 percentile: 9.0
+
+Statistics about story length
+(All numbers after tokenization)
+Max: 110, Mean: 53.35, Std Dev: 9.73, Median: 53.00,
+95 percentile: 70.0, 99 percentile: 75.0
+"""
 
 
 class ROCStoriesDataModule(LightningDataModule):
@@ -90,6 +105,8 @@ class ROCStoriesDataModule(LightningDataModule):
                 split=f"train[:{self.percentage}%]",
             )
 
+            # self.stats(dataset)
+
             # train/val/test split -> 80/10/10
             train_test_data = dataset.train_test_split(test_size=0.2)
             test_val_data = train_test_data["test"].train_test_split(test_size=0.5)
@@ -146,3 +163,32 @@ class ROCStoriesDataModule(LightningDataModule):
             batch_size=self.batch_size,
             shuffle=self.shuffle,
         )
+
+    def stats(self, dataset):
+        def length_stats(lst):
+            lengths = [len(i) for i in lst]
+            print(
+                f"Max: {np.max(lengths)}, Mean: {np.mean(lengths):.2f}, Std Dev: {np.std(lengths):.2f}, "
+                f"Median: {np.median(lengths):.2f}, 95 percentile: {np.percentile(lengths, 95)}, "
+                f"99 percentile: {np.percentile(lengths, 99)}"
+            )
+
+        # check
+        print(dataset)
+
+        # stats for story titles/summaries
+        titles = dataset["storytitle"]
+        tok_titles = self.tokenizer(titles)
+        length_stats(list(tok_titles.values())[0])
+
+        # stats for stories
+        dataset = pd.DataFrame(dataset)
+        wanted_keys = ["sentence1", "sentence2", "sentence3", "sentence4", "sentence5"]
+        dataset["story"] = dataset.loc[:, wanted_keys].apply(
+            lambda x: " ".join(x), axis=1
+        )
+        dataset = dataset.to_dict(orient="list")
+
+        stories = dataset["story"]
+        tok_stories = self.tokenizer(stories)
+        length_stats(list(tok_stories.values())[0])

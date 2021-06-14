@@ -7,37 +7,48 @@ from src.models.modules import Expander
 
 
 class ExpanderModel(LightningModule):
-    def __init__(self, model_name_or_path: str):
+    def __init__(self, name: str, model_name_or_path: str, learning_rate: float = 5e-5):
         super().__init__()
         self.save_hyperparameters()
 
         self.model = Expander(model_name_or_path=model_name_or_path)
+        self.lr = learning_rate
 
     def forward(self, dict_input: Dict) -> Dict:
         return self.model(dict_input)
 
-    def step(self, batch, prefix: str) -> Optional[Dict]:
+    def training_step(self, batch, batch_idx):
         results = self.forward(batch)
-        loss = results["loss"]
 
         # fmt: off
-        self.log(f"{prefix}/loss", results["loss"], on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"{prefix}/acc", results["accuracy"], on_step=True, on_epoch=True, prog_bar=False)
-        self.log(f"{prefix}/bleu", results["bleu"], on_step=True, on_epoch=True, prog_bar=False)
+        self.log(f"train/loss", results["loss"], on_step=True, on_epoch=True, prog_bar=True)
+        self.log(f"train/acc", results["accuracy"], on_step=True, on_epoch=True, prog_bar=True)
+        self.log(f"train/bleu", results["bleu"], on_step=True, on_epoch=True, prog_bar=True)
         # fmt: on
 
-        del results
-
-        return {"loss": loss}
-
-    def training_step(self, batch, batch_idx):
-        return self.step(batch, "train")
+        return results["loss"]
 
     def validation_step(self, batch, batch_idx):
-        return self.step(batch, "val")
+        results = self.forward(batch)
+
+        # fmt: off
+        self.log(f"val/loss", results["loss"], on_step=False, on_epoch=True)
+        self.log(f"val/acc", results["accuracy"], on_step=False, on_epoch=True)
+        self.log(f"val/bleu", results["bleu"], on_step=False, on_epoch=True)
+        # fmt: on
+
+        return results["loss"]
 
     def test_step(self, batch, batch_idx):
-        return self.step(batch, "test")
+        results = self.forward(batch)
+
+        # fmt: off
+        self.log(f"val/loss", results["loss"], on_step=False, on_epoch=True)
+        self.log(f"val/acc", results["accuracy"], on_step=False, on_epoch=True)
+        self.log(f"val/bleu", results["bleu"], on_step=False, on_epoch=True)
+        # fmt: on
+
+        return results["loss"]
 
     def generate(self, conditioning_sentences: Union[str, List[str]]) -> List[str]:
         if isinstance(conditioning_sentences, str):
@@ -46,4 +57,4 @@ class ExpanderModel(LightningModule):
         return self.model.generate(conditioning_sentences)
 
     def configure_optimizers(self):
-        return AdamW(self.model.parameters())
+        return AdamW(self.parameters(), lr=self.lr)

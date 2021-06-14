@@ -6,8 +6,8 @@ percentage: 100  # percentage of dataset to load
 shuffle: True  # `True` shuffles dataset every epoch
 padding: 'max_length'  # padding strategy (check `Tokenizers` documentation)
 truncation: True  # truncation strategy (check `Tokenizers` documentation)
-max_story_length: 150  # max story length in tokens
-max_summary_length: 10  # max summary length in tokens
+max_story_length: 70  # max story length in tokens
+max_summary_length: 7  # max summary length in tokens
 load_dataset_from_file: True
 train_path: [ 'ROCStories_spring2016.csv', 'ROCStories_winter2017.csv' ]
 # val_path: [ 'cloze_test_val_spring2016.csv', 'cloze_test_val_winter2018.csv' ]
