@@ -94,9 +94,7 @@ class Expander(nn.Module):
         tokenized_sentences = self.tokenizer(
             conditioning_sentences, padding="longest", return_tensors="pt"
         )
-
         generated_ids = self.expander.generate(**tokenized_sentences)
-
         generated_stories = self.tokenizer.batch_decode(
             generated_ids, skip_special_tokens=True
         )

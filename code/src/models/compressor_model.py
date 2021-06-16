@@ -1,9 +1,9 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 from pytorch_lightning import LightningModule
-from transformers.optimization import AdamW
-
 from src.models.modules import Compressor
+from transformers import PreTrainedTokenizerFast
+from transformers.optimization import AdamW
 
 
 class CompressorModel(LightningModule):
@@ -58,3 +58,7 @@ class CompressorModel(LightningModule):
 
     def configure_optimizers(self):
         return AdamW(self.parameters(), lr=self.lr)
+
+    @property
+    def tokenizer(self) -> PreTrainedTokenizerFast:
+        return self.model.tokenizer

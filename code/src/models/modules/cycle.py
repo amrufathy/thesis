@@ -1,13 +1,11 @@
 from typing import Dict
 
-import torch
 from sacrebleu import corpus_bleu
+from src.models.modules import Compressor, Expander
 from torch import argmax, cuda, device, nn, tensor
 from torch.nn.functional import cross_entropy, gumbel_softmax
 from torchmetrics.functional import accuracy
 from transformers import BartTokenizerFast
-
-from src.models.modules import Compressor, Expander
 
 
 class CycleArchitecture(nn.Module):

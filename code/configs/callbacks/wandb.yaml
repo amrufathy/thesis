@@ -10,3 +10,8 @@ upload_ckpts_as_artifact:
   _target_: src.callbacks.wandb_callbacks.UploadCheckpointsAsArtifact
   ckpt_dir: "checkpoints/"
   upload_best_only: True
+
+text_generation:
+  _target_: src.callbacks.wandb_callbacks.TextGenerationCallback
+  data_dir: ${work_dir}/data/.processed_rocstories # TODO: temporary hack - fix later
+  limit: 100

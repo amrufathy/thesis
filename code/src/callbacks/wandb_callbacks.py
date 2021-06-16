@@ -1,10 +1,10 @@
 import glob
 import os
 
+import wandb
+from datasets import load_from_disk
 from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.loggers import LoggerCollection, WandbLogger
-
-import wandb
 
 
 def get_wandb_logger(trainer: Trainer) -> WandbLogger:
@@ -74,3 +74,42 @@ class UploadCheckpointsAsArtifact(Callback):
                 ckpts.add_file(path)
 
         experiment.use_artifact(ckpts)
+
+
+class TextGenerationCallback(Callback):
+    def __init__(self, data_dir: str, limit: int = 100):
+        self.data_dir = data_dir
+        self.limit = limit
+
+    def on_fit_end(self, trainer, pl_module):
+        dataset = load_from_disk(self.data_dir)["val"]  # use only val data
+        tokenizer = pl_module.tokenizer
+
+        gold_stories = tokenizer.batch_decode(
+            dataset["story_ids"][: self.limit],
+            skip_special_tokens=True,
+        )
+        gold_summaries = tokenizer.batch_decode(
+            dataset["summary_ids"][: self.limit],
+            skip_special_tokens=True,
+        )
+
+        del dataset
+
+        if "Compressor" in str(pl_module.__class__):
+            predictions = pl_module.generate(gold_stories)
+        elif "Expander" in str(pl_module.__class__):
+            predictions = pl_module.generate(gold_summaries)
+        else:  # TODO: cycle model case
+            predictions = []
+
+        table = wandb.Table(columns=["gold_story", "gold_summary", "prediction"])
+
+        for p, st, sm in zip(predictions, gold_stories, gold_summaries):
+            table.add_data(st, sm, p)
+
+        # fmt: off
+        wandb.log({"generations": table})
+        # fmt: on
+
+        del predictions, gold_stories, gold_summaries

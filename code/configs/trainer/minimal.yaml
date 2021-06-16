@@ -10,7 +10,6 @@ precision: 16
 profiler: "simple"
 log_gpu_memory: True
 deterministic: True
-# plugins: "TPUSpawnPlugin(debug=True)"
 
 weights_summary: null
 progress_bar_refresh_rate: 10

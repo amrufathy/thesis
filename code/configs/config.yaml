@@ -39,4 +39,4 @@ print_config: True
 ignore_warnings: True
 
 # global seed
-seed: 12345
+seed: 42

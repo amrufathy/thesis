@@ -124,24 +124,24 @@ class ROCStoriesDataModule(LightningDataModule):
                 ["sentence1", "sentence2", "sentence3", "sentence4", "sentence5"]
             )
 
+            # pytorch vector format
+            self.tokenized_dataset.set_format(
+                type="torch",
+                columns=[
+                    "story_ids",
+                    "story_attn_msk",
+                    "story_labels",
+                    "summary_ids",
+                    "summary_attn_msk",
+                    "summary_labels",
+                ],
+            )
+
             self.tokenized_dataset.save_to_disk(self.processed_dataset_path)
 
             del dataset, train_test_data, test_val_data
         else:
             self.tokenized_dataset = load_from_disk(self.processed_dataset_path)
-
-        # pytorch vector format
-        self.tokenized_dataset.set_format(
-            type="torch",
-            columns=[
-                "story_ids",
-                "story_attn_msk",
-                "story_labels",
-                "summary_ids",
-                "summary_attn_msk",
-                "summary_labels",
-            ],
-        )
 
     def train_dataloader(self):
         return DataLoader(

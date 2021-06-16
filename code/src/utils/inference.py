@@ -10,11 +10,11 @@ data_dict = {
 }
 
 # run = wandb.init()
-# artifact = run.use_artifact('amru/template-tests/experiment-ckpts:v7', type='checkpoints')
+# artifact = run.use_artifact('amru/template-tests/experiment-ckpts:v10', type='checkpoints')
 # artifact_dir = artifact.download()
 
 exp = ExpanderModel.load_from_checkpoint(
-    "./.artifacts/experiment-ckpts:v8/expander-05-28_15-12-epoch=01.ckpt"
+    "./.artifacts/experiment-ckpts:v10/expander-06-14_14-33-epoch=04.ckpt"
 )
 # exp = ExpanderModel(model_name_or_path='facebook/bart-base')
 
@@ -25,7 +25,7 @@ print(generated_stories)
 print("=" * 100)
 
 comp = CompressorModel.load_from_checkpoint(
-    "./.artifacts/experiment-ckpts:v7/compressor-05-28_14-02-epoch=01.ckpt"
+    "./.artifacts/experiment-ckpts:v9/compressor-06-14_12-54-epoch=01.ckpt"
 )
 
 comp_examples = list(data_dict.values())
