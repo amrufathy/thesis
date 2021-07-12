@@ -11,4 +11,4 @@ max_summary_length: 10  # max summary length in tokens
 load_dataset_from_file: False
 train_path: 'gigaword_train.csv'
 val_path: 'gigaword_valid.csv'
-processed_data_dir: '.processed_gigaword'
+processed_data_dir: '${data_dir}/.processed_gigaword'

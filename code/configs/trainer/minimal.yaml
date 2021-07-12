@@ -5,7 +5,7 @@ gpus: 1
 tpu_cores: null
 
 min_epochs: 1
-max_epochs: 5
+max_epochs: 20
 precision: 16
 profiler: "simple"
 log_gpu_memory: True

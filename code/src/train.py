@@ -10,6 +10,7 @@ from pytorch_lightning import (
     seed_everything,
 )
 from pytorch_lightning.loggers import LightningLoggerBase
+
 from src.utils import utils
 
 log = utils.get_logger(__name__)
@@ -56,9 +57,7 @@ def train(config: DictConfig) -> Optional[float]:
 
     # Init Lightning trainer
     log.info(f"Instantiating trainer <{config.trainer._target_}>")
-    trainer: Trainer = hydra.utils.instantiate(
-        config.trainer, callbacks=callbacks, logger=logger, _convert_="partial"
-    )
+    trainer: Trainer = hydra.utils.instantiate(config.trainer, callbacks=callbacks, logger=logger, _convert_="partial")
 
     # Send some parameters from config to all lightning loggers
     log.info("Logging hyperparameters!")

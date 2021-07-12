@@ -1,17 +1,27 @@
 from typing import Dict, List, Union
 
 from pytorch_lightning import LightningModule
-from src.models.modules import Expander
 from transformers import PreTrainedTokenizerFast
 from transformers.optimization import AdamW
 
+from src.models.modules import Expander
+
 
 class ExpanderModel(LightningModule):
-    def __init__(self, name: str, model_name_or_path: str, learning_rate: float = 5e-5):
+    def __init__(
+        self,
+        name: str,
+        model_name_or_path: str,
+        learning_rate: float = 5e-5,
+        max_generation_length: int = 70,
+    ):
         super().__init__()
         self.save_hyperparameters()
 
-        self.model = Expander(model_name_or_path=model_name_or_path)
+        self.model = Expander(
+            model_name_or_path=model_name_or_path,
+            max_generation_length=max_generation_length,
+        )
         self.lr = learning_rate
 
     def forward(self, dict_input: Dict) -> Dict:

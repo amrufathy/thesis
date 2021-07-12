@@ -15,14 +15,13 @@ defaults:
 
 trainer:
   min_epochs: 1
-  max_epochs: 3
+  max_epochs: 20
   profiler: "simple"
   log_gpu_memory: True
 
 datamodule:
-  batch_size: 32
+  batch_size: 64
   percentage: 100  # percentage of dataset to load
-  shuffle: True  # `True` shuffles dataset every epoch
   load_dataset_from_file: False
 
 callbacks:

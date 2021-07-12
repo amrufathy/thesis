@@ -29,7 +29,7 @@ class ROCStoriesDataModule(LightningDataModule):
         self,
         data_dir: str,
         processed_data_dir: str,
-        train_path: Union[str, List[str]],
+        train_files: Union[str, List[str]],
         batch_size: int = 32,
         percentage: int = 100,
         max_story_length: int = 150,
@@ -51,8 +51,8 @@ class ROCStoriesDataModule(LightningDataModule):
 
         self.load_from_file = load_dataset_from_file
 
-        self.processed_dataset_path = join(data_dir, processed_data_dir)
-        self.train_paths = [join(data_dir, path) for path in train_path]
+        self.processed_dataset_path = processed_data_dir
+        self.train_paths = [join(data_dir, path) for path in train_files]
 
         self.tokenized_dataset = None
         self.tokenizer = BartTokenizerFast.from_pretrained("facebook/bart-base")
@@ -63,9 +63,7 @@ class ROCStoriesDataModule(LightningDataModule):
     def tokenize_example(self, example: Dict):
         example = pd.DataFrame(example)
         wanted_keys = ["sentence1", "sentence2", "sentence3", "sentence4", "sentence5"]
-        example["story"] = example.loc[:, wanted_keys].apply(
-            lambda x: " ".join(x), axis=1
-        )
+        example["story"] = example.loc[:, wanted_keys].apply(lambda x: " ".join(x), axis=1)
         example = example.to_dict(orient="list")
 
         story_embeddings = self.tokenizer(
@@ -120,9 +118,7 @@ class ROCStoriesDataModule(LightningDataModule):
 
             # tokenize data
             self.tokenized_dataset = dataset.map(self.tokenize_example, batched=True)
-            self.tokenized_dataset.remove_columns_(
-                ["sentence1", "sentence2", "sentence3", "sentence4", "sentence5"]
-            )
+            self.tokenized_dataset.remove_columns(["sentence1", "sentence2", "sentence3", "sentence4", "sentence5"])
 
             # pytorch vector format
             self.tokenized_dataset.set_format(
@@ -184,9 +180,7 @@ class ROCStoriesDataModule(LightningDataModule):
         # stats for stories
         dataset = pd.DataFrame(dataset)
         wanted_keys = ["sentence1", "sentence2", "sentence3", "sentence4", "sentence5"]
-        dataset["story"] = dataset.loc[:, wanted_keys].apply(
-            lambda x: " ".join(x), axis=1
-        )
+        dataset["story"] = dataset.loc[:, wanted_keys].apply(lambda x: " ".join(x), axis=1)
         dataset = dataset.to_dict(orient="list")
 
         stories = dataset["story"]

@@ -1,11 +1,12 @@
-from typing import Dict
+from typing import Dict, List, Tuple
 
 from sacrebleu import corpus_bleu
-from src.models.modules import Compressor, Expander
 from torch import argmax, cuda, device, nn, tensor
 from torch.nn.functional import cross_entropy, gumbel_softmax
 from torchmetrics.functional import accuracy
 from transformers import BartTokenizerFast
+
+from src.models.modules import Compressor, Expander
 
 
 class CycleArchitecture(nn.Module):
@@ -13,17 +14,13 @@ class CycleArchitecture(nn.Module):
         self,
         expander_model_name: str,
         compressor_model_name: str,
-        use_gumbel_softmax: bool,
+        use_gumbel_softmax: bool = False,
     ):
         super().__init__()
 
         self.tokenizer = BartTokenizerFast.from_pretrained("facebook/bart-base")
-        self.expander = Expander(
-            model_name_or_path=expander_model_name, tokenizer=self.tokenizer
-        )
-        self.compressor = Compressor(
-            model_name_or_path=compressor_model_name, tokenizer=self.tokenizer
-        )
+        self.expander = Expander(model_name_or_path=expander_model_name, tokenizer=self.tokenizer)
+        self.compressor = Compressor(model_name_or_path=compressor_model_name, tokenizer=self.tokenizer)
         self.device = device("cuda") if cuda.is_available() else device("cpu")
         self.use_gumbel_softmax = use_gumbel_softmax
 
@@ -37,16 +34,15 @@ class CycleArchitecture(nn.Module):
 
         # INFO - Step 1: Expansion (Summary -> Story)
         expansion_results = self.expander(dict_input)
-        expansion_loss, expansion_logits = (
+        expansion_loss, expansion_logits, expansion_accuracy, expansion_bleu = (
             expansion_results["loss"],
             expansion_results["logits"],
-        )
-        expansion_accuracy, expansion_bleu = (
             expansion_results["accuracy"],
             expansion_results["bleu"],
         )
 
-        # overwrite dict_input['story_ids'] (original story ids) with generated_story_ids
+        # INFO: if using gumbel then the whole cycle is differentiable
+        #  if not using gumbel then dual learning technique
         if self.use_gumbel_softmax:
             # WIP
             # https://pytorch.org/docs/stable/nn.functional.html#gumbel-softmax
@@ -55,27 +51,24 @@ class CycleArchitecture(nn.Module):
         else:
             generated_story_ids = argmax(expansion_logits, dim=-1)
 
+        # overwrite dict_input['story_ids'] (original story ids) with generated_story_ids
         dict_input["story_ids"] = generated_story_ids
 
         del expansion_results, generated_story_ids
 
         # INFO - Step 2: Compression (Generated Story -> Reconstructed Summary)
         compression_results = self.compressor(dict_input)
-        compression_loss, compression_logits = (
+        compression_loss, compression_logits, compression_accuracy, compression_bleu = (
             compression_results["loss"],
             compression_results["logits"],
-        )
-        compression_accuracy, compression_bleu = (
             compression_results["accuracy"],
             compression_results["bleu"],
         )
 
         # INFO - Step 3: Calculate Reconstruction Loss
-        # ignore <s> and reshape
-        reconstructed_logits = (
-            compression_logits[:, 1:].contiguous().view(-1, compression_logits.size(-1))
-        )
-        summary_labels = dict_input["summary_labels"][:, 1:].contiguous().view(-1)
+        # reshape
+        reconstructed_logits = compression_logits.view(-1, compression_logits.size(-1))
+        summary_labels = dict_input["summary_labels"].view(-1)
 
         reconstruction_loss = cross_entropy(reconstructed_logits, summary_labels)
         total_loss = expansion_loss + compression_loss + reconstruction_loss
@@ -85,23 +78,14 @@ class CycleArchitecture(nn.Module):
         # reconstruction accuracy
         reconstructed_summary_ids = argmax(compression_logits, dim=-1)
         masked_labels = dict_input["summary_labels"].detach().clone()
-        masked_labels[
-            masked_labels[:, :] == -100
-        ] = self.tokenizer.pad_token_id  # restore padding token id
+        masked_labels[masked_labels[:, :] == -100] = self.tokenizer.pad_token_id  # restore padding token id
 
         reconstruction_accuracy = accuracy(reconstructed_summary_ids, masked_labels)
-        total_accuracy = (
-            expansion_accuracy + compression_accuracy + reconstruction_accuracy
-        )
+        total_accuracy = expansion_accuracy + compression_accuracy + reconstruction_accuracy
 
         # reconstruction bleu
-        # TODO: (run in val only)
-        predictions = self.tokenizer.batch_decode(
-            reconstructed_summary_ids, skip_special_tokens=True
-        )
-        references = self.tokenizer.batch_decode(
-            masked_labels, skip_special_tokens=True
-        )
+        predictions = self.tokenizer.batch_decode(reconstructed_summary_ids, skip_special_tokens=True)
+        references = self.tokenizer.batch_decode(masked_labels, skip_special_tokens=True)
 
         bleu = corpus_bleu(predictions, [references])
 
@@ -110,6 +94,7 @@ class CycleArchitecture(nn.Module):
         return {
             # losses
             "loss": total_loss,
+            "rec_loss": reconstruction_loss,
             "exp_loss": expansion_loss,
             "comp_loss": compression_loss,
             # accuracy
@@ -121,3 +106,14 @@ class CycleArchitecture(nn.Module):
             "exp_bleu": expansion_bleu,
             "comp_bleu": compression_bleu,
         }
+
+    def generate(self, conditioning_sentences: List[str]) -> Tuple[List[str], List[str]]:
+        """
+        Generate intermediate stories and reconstructed summaries based on
+            conditional input summaries
+        """
+
+        generated_stories = self.expander.generate(conditioning_sentences)
+        reconstructed_summaries = self.compressor.generate(generated_stories)
+
+        return generated_stories, reconstructed_summaries

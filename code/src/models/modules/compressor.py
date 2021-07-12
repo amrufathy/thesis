@@ -11,9 +11,7 @@ class Compressor(nn.Module):
     def __init__(self, model_name_or_path: str, tokenizer: BartTokenizerFast = None):
         super().__init__()
 
-        self.compressor: BartForConditionalGeneration = (
-            BartForConditionalGeneration.from_pretrained(model_name_or_path)
-        )
+        self.compressor: BartForConditionalGeneration = BartForConditionalGeneration.from_pretrained(model_name_or_path)
         self.device = device("cuda") if cuda.is_available() else device("cpu")
 
         if not tokenizer:
@@ -41,9 +39,7 @@ class Compressor(nn.Module):
         compression_results = self.compressor(
             **{
                 "input_ids": dict_input["story_ids"],
-                "attention_mask": dict_input[
-                    "story_attn_msk"
-                ],  # TODO: check if right in case of used within cycle
+                "attention_mask": dict_input["story_attn_msk"],  # TODO: check if right in case of used within cycle
                 "decoder_input_ids": summary_ids_shifted,
                 "decoder_attention_mask": dict_input["summary_attn_msk"],
                 "labels": dict_input["summary_labels"],
@@ -63,18 +59,12 @@ class Compressor(nn.Module):
         # accuracy
         generated_summary_ids = argmax(compression_logits, dim=-1)
         masked_labels = dict_input["summary_labels"].detach().clone()
-        masked_labels[
-            masked_labels[:, :] == -100
-        ] = self.tokenizer.pad_token_id  # restore padding token id
+        masked_labels[masked_labels[:, :] == -100] = self.tokenizer.pad_token_id  # restore padding token id
         acc = accuracy(generated_summary_ids, masked_labels)
 
         # bleu
-        predictions = self.tokenizer.batch_decode(
-            generated_summary_ids, skip_special_tokens=True
-        )
-        references = self.tokenizer.batch_decode(
-            masked_labels, skip_special_tokens=True
-        )
+        predictions = self.tokenizer.batch_decode(generated_summary_ids, skip_special_tokens=True)
+        references = self.tokenizer.batch_decode(masked_labels, skip_special_tokens=True)
         # predictions = self.adjust_padding(predictions, references)
 
         bleu = corpus_bleu(predictions, [references])
@@ -93,37 +83,8 @@ class Compressor(nn.Module):
         Generate summaries depending on conditional input stories
         """
 
-        tokenized_sentences = self.tokenizer(
-            conditioning_sentences, padding="longest", return_tensors="pt"
-        )
+        tokenized_sentences = self.tokenizer(conditioning_sentences, padding="longest", return_tensors="pt")
         generated_ids = self.compressor.generate(**tokenized_sentences)
-        generated_summaries = self.tokenizer.batch_decode(
-            generated_ids, skip_special_tokens=True
-        )
+        generated_summaries = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
         return generated_summaries
-
-    def adjust_padding(self, predictions, references):
-        """
-        Adjusts the token-wise padding of `predictions` to match
-            lengths of `references`
-        """
-
-        adjusted_paddings = []
-        for p, r in zip(predictions, references):
-            tp = self.tokenizer.tokenize(self.tokenizer.clean_up_tokenization(p))
-            tr = self.tokenizer.tokenize(self.tokenizer.clean_up_tokenization(r))
-
-            if len(tp) == len(tr):
-                adjusted_paddings.append(p)
-            elif len(tp) > len(tr):
-                ts = tp[: len(tr)]
-                adjusted_paddings.append(self.tokenizer.convert_tokens_to_string(ts))
-            else:  # len(tp) < len(tr)
-                # Ġ character represents a whitespace in the byte-level representation
-                ts = tp + ["Ġ" + self.tokenizer.pad_token] * (len(tr) - len(tp))
-                adjusted_paddings.append(self.tokenizer.convert_tokens_to_string(ts))
-
-            del tp, tr
-
-        return adjusted_paddings

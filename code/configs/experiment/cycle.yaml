@@ -15,9 +15,10 @@ defaults:
 
 trainer:
   min_epochs: 1
-  max_epochs: 3
+  max_epochs: 20
   profiler: "simple"
   log_gpu_memory: True
+  accumulate_grad_batches: 64/${datamodule.batch_size}  # regularize gradient updating with other models
 
 model:
   use_gumbel_softmax: False
@@ -25,7 +26,6 @@ model:
 datamodule:
   batch_size: 16
   percentage: 100  # percentage of dataset to load
-  shuffle: True  # `True` shuffles dataset every epoch
   load_dataset_from_file: False
 
 callbacks:

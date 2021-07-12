@@ -1,9 +1,10 @@
 from typing import Dict, List, Union
 
 from pytorch_lightning import LightningModule
-from src.models.modules import Compressor
 from transformers import PreTrainedTokenizerFast
 from transformers.optimization import AdamW
+
+from src.models.modules import Compressor
 
 
 class CompressorModel(LightningModule):

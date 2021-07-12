@@ -8,13 +8,17 @@ from transformers.models.bart.modeling_bart import shift_tokens_right
 
 
 class Expander(nn.Module):
-    def __init__(self, model_name_or_path: str, tokenizer: BartTokenizerFast = None):
+    def __init__(
+        self,
+        model_name_or_path: str,
+        tokenizer: BartTokenizerFast = None,
+        max_generation_length: int = 70,
+    ):
         super().__init__()
 
-        self.expander: BartForConditionalGeneration = (
-            BartForConditionalGeneration.from_pretrained(model_name_or_path)
-        )
+        self.expander: BartForConditionalGeneration = BartForConditionalGeneration.from_pretrained(model_name_or_path)
         self.device = device("cuda") if cuda.is_available() else device("cpu")
+        self.max_generation_length = max_generation_length
 
         if not tokenizer:
             self.tokenizer = BartTokenizerFast.from_pretrained(model_name_or_path)
@@ -61,19 +65,12 @@ class Expander(nn.Module):
         # accuracy
         generated_story_ids = argmax(expansion_logits, dim=-1)
         masked_labels = dict_input["story_labels"].detach().clone()
-        masked_labels[
-            masked_labels[:, :] == -100
-        ] = self.tokenizer.pad_token_id  # restore padding token id
+        masked_labels[masked_labels[:, :] == -100] = self.tokenizer.pad_token_id  # restore padding token id
         acc = accuracy(generated_story_ids, masked_labels)
 
         # bleu
-        predictions = self.tokenizer.batch_decode(
-            generated_story_ids, skip_special_tokens=True
-        )
-        references = self.tokenizer.batch_decode(
-            masked_labels, skip_special_tokens=True
-        )
-        # predictions = self.adjust_padding(predictions, references)
+        predictions = self.tokenizer.batch_decode(generated_story_ids, skip_special_tokens=True)
+        references = self.tokenizer.batch_decode(masked_labels, skip_special_tokens=True)
 
         bleu = corpus_bleu(predictions, [references])
 
@@ -91,37 +88,15 @@ class Expander(nn.Module):
         Generate stories depending on conditional input summaries
         """
 
-        tokenized_sentences = self.tokenizer(
-            conditioning_sentences, padding="longest", return_tensors="pt"
+        tokenized_sentences = self.tokenizer(conditioning_sentences, padding="longest", return_tensors="pt")
+        generated_ids = self.expander.generate(
+            **tokenized_sentences,
+            num_beams=5,
+            do_sample=True,
+            early_stopping=False,
+            max_length=self.max_generation_length,
+            length_penalty=1.5
         )
-        generated_ids = self.expander.generate(**tokenized_sentences)
-        generated_stories = self.tokenizer.batch_decode(
-            generated_ids, skip_special_tokens=True
-        )
+        generated_stories = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
         return generated_stories
-
-    def adjust_padding(self, predictions, references):
-        """
-        Adjusts the token-wise padding of `predictions` to match
-            lengths of `references`
-        """
-
-        adjusted_paddings = []
-        for p, r in zip(predictions, references):
-            tp = self.tokenizer.tokenize(self.tokenizer.clean_up_tokenization(p))
-            tr = self.tokenizer.tokenize(self.tokenizer.clean_up_tokenization(r))
-
-            if len(tp) == len(tr):
-                adjusted_paddings.append(p)
-            elif len(tp) > len(tr):
-                ts = tp[: len(tr)]
-                adjusted_paddings.append(self.tokenizer.convert_tokens_to_string(ts))
-            else:  # len(tp) < len(tr)
-                # Ġ character represents a whitespace in the byte-level representation
-                ts = tp + ["Ġ" + self.tokenizer.pad_token] * (len(tr) - len(tp))
-                adjusted_paddings.append(self.tokenizer.convert_tokens_to_string(ts))
-
-            del tp, tr
-
-        return adjusted_paddings

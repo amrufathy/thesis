@@ -18,9 +18,7 @@ def get_wandb_logger(trainer: Trainer) -> WandbLogger:
             if isinstance(logger, WandbLogger):
                 return logger
 
-    raise Exception(
-        "You are using wandb related callback, but WandbLogger was not found for some reason..."
-    )
+    raise Exception("You are using wandb related callback, but WandbLogger was not found for some reason...")
 
 
 class WatchModel(Callback):
@@ -55,11 +53,10 @@ class UploadCodeAsArtifact(Callback):
 class UploadCheckpointsAsArtifact(Callback):
     """Upload checkpoints to wandb as an artifact, at the end of run."""
 
-    def __init__(self, ckpt_dir: str = "checkpoints/", upload_best_only: bool = False):
-        self.ckpt_dir = ckpt_dir
+    def __init__(self, upload_best_only: bool = False):
         self.upload_best_only = upload_best_only
 
-    def on_train_end(self, trainer, pl_module):
+    def __save_checkpoints(self, trainer):
         logger = get_wandb_logger(trainer=trainer)
         experiment = logger.experiment
 
@@ -69,11 +66,18 @@ class UploadCheckpointsAsArtifact(Callback):
             ckpts.add_file(trainer.checkpoint_callback.best_model_path)
         else:
             for path in glob.glob(
-                os.path.join(self.ckpt_dir, "**/*.ckpt"), recursive=True
+                os.path.join(trainer.checkpoint_callback.dirpath, "**/*.ckpt"),
+                recursive=True,
             ):
                 ckpts.add_file(path)
 
         experiment.use_artifact(ckpts)
+
+    def on_train_end(self, trainer, pl_module):
+        return self.__save_checkpoints(trainer)
+
+    def on_keyboard_interrupt(self, trainer, pl_module):
+        return self.__save_checkpoints(trainer)
 
 
 class TextGenerationCallback(Callback):
@@ -84,6 +88,9 @@ class TextGenerationCallback(Callback):
     def on_fit_end(self, trainer, pl_module):
         dataset = load_from_disk(self.data_dir)["val"]  # use only val data
         tokenizer = pl_module.tokenizer
+
+        if self.limit == -1:  # no limit
+            self.limit = dataset["summary_ids"].size(0)
 
         gold_stories = tokenizer.batch_decode(
             dataset["story_ids"][: self.limit],
@@ -96,20 +103,33 @@ class TextGenerationCallback(Callback):
 
         del dataset
 
-        if "Compressor" in str(pl_module.__class__):
-            predictions = pl_module.generate(gold_stories)
-        elif "Expander" in str(pl_module.__class__):
-            predictions = pl_module.generate(gold_summaries)
-        else:  # TODO: cycle model case
-            predictions = []
+        if "Compressor" in str(pl_module.__class__) or "Expander" in str(pl_module.__class__):
+            # if compressor/expander: generate one-way predictions
+            if "Compressor" in str(pl_module.__class__):
+                predictions = pl_module.generate(gold_stories)
+            else:  # Expander
+                predictions = pl_module.generate(gold_summaries)
 
-        table = wandb.Table(columns=["gold_story", "gold_summary", "prediction"])
+            # write to w&b table
+            table = wandb.Table(columns=["gold_story", "gold_summary", "prediction"])
+            for p, st, sm in zip(predictions, gold_stories, gold_summaries):
+                table.add_data(st, sm, p)
 
-        for p, st, sm in zip(predictions, gold_stories, gold_summaries):
-            table.add_data(st, sm, p)
+            del predictions
+
+        else:
+            # if cycle: generate two-way predictions
+            predicted_stories, predicted_summaries = pl_module.generate(gold_summaries)
+
+            # write to w&b table
+            table = wandb.Table(columns=["gold_story", "gold_summary", "predicted_stories", "predicted_summaries"])
+            for st, sm, pst, psm in zip(gold_stories, gold_summaries, predicted_stories, predicted_summaries):
+                table.add_data(st, sm, pst, psm)
+
+            del predicted_stories, predicted_summaries
 
         # fmt: off
         wandb.log({"generations": table})
         # fmt: on
 
-        del predictions, gold_stories, gold_summaries
+        del gold_stories, gold_summaries

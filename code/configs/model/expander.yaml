@@ -3,3 +3,4 @@ _target_: src.models.expander_model.ExpanderModel
 name: 'Expander'  # used for experiment logging
 model_name_or_path: 'facebook/bart-base'
 learning_rate: 5e-5
+max_generation_length: ${datamodule.max_story_length}  # max length to use when generating stories
