@@ -8,7 +8,7 @@ defaults:
   - callbacks: wandb.yaml  # set this to null if you don't want to use callbacks
   - logger: wandb.yaml  # set logger here or use command line (e.g. `python run.py logger=wandb`)
 
-  - experiment: compressor.yaml
+  - experiment: cycle.yaml
   - hparams_search: null
 
   - hydra: default.yaml
@@ -40,3 +40,9 @@ ignore_warnings: True
 
 # global seed
 seed: 42
+
+# run train loop only
+run_train_only: False
+
+# run test loop only (overrides `run_train_only`)
+run_test_only: False

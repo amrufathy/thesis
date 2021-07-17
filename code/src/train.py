@@ -75,7 +75,7 @@ def train(config: DictConfig) -> Optional[float]:
     trainer.fit(model=model, datamodule=datamodule)
 
     # Evaluate model on test set after training
-    if not config.trainer.get("fast_dev_run"):
+    if not config.trainer.get("fast_dev_run") and not config.get("run_train_only"):
         log.info("Starting testing!")
         trainer.test()
 

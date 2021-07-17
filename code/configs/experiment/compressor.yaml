@@ -18,6 +18,7 @@ trainer:
   max_epochs: 20
   profiler: "simple"
   log_gpu_memory: True
+  resume_from_checkpoint: null
 
 datamodule:
   batch_size: 64

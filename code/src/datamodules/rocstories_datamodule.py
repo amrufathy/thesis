@@ -106,8 +106,8 @@ class ROCStoriesDataModule(LightningDataModule):
             # self.stats(dataset)
 
             # train/val/test split -> 80/10/10
-            train_test_data = dataset.train_test_split(test_size=0.2)
-            test_val_data = train_test_data["test"].train_test_split(test_size=0.5)
+            train_test_data = dataset.train_test_split(test_size=0.2, seed=42)
+            test_val_data = train_test_data["test"].train_test_split(test_size=0.5, seed=42)
             dataset = DatasetDict(
                 {
                     "train": train_test_data["train"],
@@ -118,7 +118,7 @@ class ROCStoriesDataModule(LightningDataModule):
 
             # tokenize data
             self.tokenized_dataset = dataset.map(self.tokenize_example, batched=True)
-            self.tokenized_dataset.remove_columns(["sentence1", "sentence2", "sentence3", "sentence4", "sentence5"])
+            self.tokenized_dataset.remove_columns_(["sentence1", "sentence2", "sentence3", "sentence4", "sentence5"])
 
             # pytorch vector format
             self.tokenized_dataset.set_format(

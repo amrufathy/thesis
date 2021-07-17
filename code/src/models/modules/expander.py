@@ -78,9 +78,9 @@ class Expander(nn.Module):
 
         return {
             "loss": expansion_loss,
-            "logits": expansion_logits,
-            "accuracy": acc,
-            "bleu": tensor(bleu.score, device=self.device),
+            "logits": expansion_logits.detach(),
+            "accuracy": acc.detach(),
+            "bleu": tensor(bleu.score, device=self.device).detach(),
         }
 
     def generate(self, conditioning_sentences: List[str]) -> List[str]:

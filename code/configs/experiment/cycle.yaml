@@ -18,7 +18,9 @@ trainer:
   max_epochs: 20
   profiler: "simple"
   log_gpu_memory: True
-  accumulate_grad_batches: 64/${datamodule.batch_size}  # regularize gradient updating with other models
+  resume_from_checkpoint: null
+  accumulate_grad_batches: 4  # regularize gradient updating with other models
+  # batch size of compressor / batch size of cycle
 
 model:
   use_gumbel_softmax: False

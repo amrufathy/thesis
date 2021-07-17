@@ -132,4 +132,4 @@ class TextGenerationCallback(Callback):
         wandb.log({"generations": table})
         # fmt: on
 
-        del gold_stories, gold_summaries
+        del gold_stories, gold_summaries, table

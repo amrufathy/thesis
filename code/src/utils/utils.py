@@ -1,6 +1,6 @@
 import logging
 import warnings
-from typing import List, Sequence
+from typing import List, Optional, Sequence
 
 import pytorch_lightning as pl
 import rich.syntax
@@ -95,6 +95,8 @@ def print_config(
         "callbacks",
         "logger",
         "seed",
+        "run_train_only",
+        "run_test_only",
     ),
     resolve: bool = True,
 ) -> None:
@@ -170,8 +172,8 @@ def finish(
     model: pl.LightningModule,
     datamodule: pl.LightningDataModule,
     trainer: pl.Trainer,
-    callbacks: List[pl.Callback],
-    logger: List[pl.loggers.LightningLoggerBase],
+    callbacks: Optional[List[pl.Callback]],
+    logger: Optional[List[pl.loggers.LightningLoggerBase]],
 ) -> None:
     """Makes sure everything closed properly."""
 

@@ -65,7 +65,6 @@ class Compressor(nn.Module):
         # bleu
         predictions = self.tokenizer.batch_decode(generated_summary_ids, skip_special_tokens=True)
         references = self.tokenizer.batch_decode(masked_labels, skip_special_tokens=True)
-        # predictions = self.adjust_padding(predictions, references)
 
         bleu = corpus_bleu(predictions, [references])
 
@@ -73,9 +72,9 @@ class Compressor(nn.Module):
 
         return {
             "loss": compression_loss,
-            "logits": compression_logits,
-            "accuracy": acc,
-            "bleu": tensor(bleu.score, device=self.device),
+            "logits": compression_logits.detach(),
+            "accuracy": acc.detach(),
+            "bleu": tensor(bleu.score, device=self.device).detach(),
         }
 
     def generate(self, conditioning_sentences: List[str]) -> List[str]:

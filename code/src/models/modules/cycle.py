@@ -1,9 +1,7 @@
 from typing import Dict, List, Tuple
 
-from sacrebleu import corpus_bleu
-from torch import argmax, cuda, device, nn, tensor
-from torch.nn.functional import cross_entropy, gumbel_softmax
-from torchmetrics.functional import accuracy
+from torch import argmax, cuda, device, mean, nn, tensor
+from torch.nn.functional import gumbel_softmax
 from transformers import BartTokenizerFast
 
 from src.models.modules import Compressor, Expander
@@ -65,44 +63,24 @@ class CycleArchitecture(nn.Module):
             compression_results["bleu"],
         )
 
-        # INFO - Step 3: Calculate Reconstruction Loss
-        # reshape
-        reconstructed_logits = compression_logits.view(-1, compression_logits.size(-1))
-        summary_labels = dict_input["summary_labels"].view(-1)
+        # INFO - Step 3: Calculate Aggregated Metrics
+        total_loss = expansion_loss + compression_loss
+        aggr_accuracy = mean(tensor([expansion_accuracy, compression_accuracy], device=self.device))
+        aggr_bleu = mean(tensor([expansion_bleu, compression_bleu], device=self.device))
 
-        reconstruction_loss = cross_entropy(reconstructed_logits, summary_labels)
-        total_loss = expansion_loss + compression_loss + reconstruction_loss
-
-        del compression_results, reconstructed_logits, summary_labels
-
-        # reconstruction accuracy
-        reconstructed_summary_ids = argmax(compression_logits, dim=-1)
-        masked_labels = dict_input["summary_labels"].detach().clone()
-        masked_labels[masked_labels[:, :] == -100] = self.tokenizer.pad_token_id  # restore padding token id
-
-        reconstruction_accuracy = accuracy(reconstructed_summary_ids, masked_labels)
-        total_accuracy = expansion_accuracy + compression_accuracy + reconstruction_accuracy
-
-        # reconstruction bleu
-        predictions = self.tokenizer.batch_decode(reconstructed_summary_ids, skip_special_tokens=True)
-        references = self.tokenizer.batch_decode(masked_labels, skip_special_tokens=True)
-
-        bleu = corpus_bleu(predictions, [references])
-
-        del reconstructed_summary_ids, masked_labels, predictions, references
+        del compression_results
 
         return {
             # losses
             "loss": total_loss,
-            "rec_loss": reconstruction_loss,
             "exp_loss": expansion_loss,
             "comp_loss": compression_loss,
             # accuracy
-            "acc": total_accuracy,
+            "acc": aggr_accuracy.detach(),
             "exp_acc": expansion_accuracy,
             "comp_acc": compression_accuracy,
             # bleu
-            "bleu": tensor(bleu.score, device=self.device),
+            "bleu": aggr_bleu.detach(),
             "exp_bleu": expansion_bleu,
             "comp_bleu": compression_bleu,
         }

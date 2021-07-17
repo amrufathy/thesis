@@ -36,7 +36,6 @@ class CycleModel(LightningModule):
 
         # fmt: off
         self.log(f"train/loss", results["loss"], on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"train/rec_loss", results["rec_loss"], on_step=True, on_epoch=True, prog_bar=True)
         self.log(f"train/exp_loss", results["exp_loss"], on_step=True, on_epoch=True, prog_bar=True)
         self.log(f"train/comp_loss", results["comp_loss"], on_step=True, on_epoch=True, prog_bar=True)
 
@@ -56,7 +55,6 @@ class CycleModel(LightningModule):
 
         # fmt: off
         self.log(f"{prefix}/loss", results["loss"], on_step=False, on_epoch=True)
-        self.log(f"{prefix}/rec_loss", results["rec_loss"], on_step=False, on_epoch=True)
         self.log(f"{prefix}/exp_loss", results["exp_loss"], on_step=False, on_epoch=True)
         self.log(f"{prefix}/comp_loss", results["comp_loss"], on_step=False, on_epoch=True)
 
