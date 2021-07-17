@@ -41,20 +41,20 @@ def test(config: DictConfig) -> Optional[float]:
     model: LightningModule = hydra.utils.instantiate(config.model)
 
     # Init Lightning callbacks
-    # callbacks: List[Callback] = []
-    # if "callbacks" in config:
-    #     for _, cb_conf in config["callbacks"].items():
-    #         if "_target_" in cb_conf:
-    #             log.info(f"Instantiating callback <{cb_conf._target_}>")
-    #             callbacks.append(hydra.utils.instantiate(cb_conf))
+    callbacks: List[Callback] = []
+    if "callbacks" in config:
+        for _, cb_conf in config["callbacks"].items():
+            if "_target_" in cb_conf:
+                log.info(f"Instantiating callback <{cb_conf._target_}>")
+                callbacks.append(hydra.utils.instantiate(cb_conf))
 
     # Init Lightning loggers
-    # logger: List[LightningLoggerBase] = []
-    # if "logger" in config:
-    #     for _, lg_conf in config["logger"].items():
-    #         if "_target_" in lg_conf:
-    #             log.info(f"Instantiating logger <{lg_conf._target_}>")
-    #             logger.append(hydra.utils.instantiate(lg_conf))
+    logger: List[LightningLoggerBase] = []
+    if "logger" in config:
+        for _, lg_conf in config["logger"].items():
+            if "_target_" in lg_conf:
+                log.info(f"Instantiating logger <{lg_conf._target_}>")
+                logger.append(hydra.utils.instantiate(lg_conf))
 
     # Init Lightning trainer
     log.info(f"Instantiating trainer <{config.trainer._target_}>")
@@ -67,16 +67,15 @@ def test(config: DictConfig) -> Optional[float]:
         model=model,
         datamodule=datamodule,
         trainer=trainer,
-        # callbacks=callbacks,
-        # logger=logger,
+        callbacks=callbacks,
+        logger=logger,
     )
 
-    # Evaluate model on test set after training
-    if not config.trainer.get("fast_dev_run"):
-        log.info("Starting testing!")
-        trainer.test(
-            model=model, ckpt_path=config.trainer.resume_from_checkpoint, test_dataloaders=datamodule.test_dataloader()
-        )
+    # Test the model
+    log.info("Starting testing!")
+    trainer.test(
+        model=model, ckpt_path=config.trainer.resume_from_checkpoint, test_dataloaders=datamodule.test_dataloader()
+    )
 
     # Make sure everything closed properly
     log.info("Finalizing!")
@@ -85,8 +84,8 @@ def test(config: DictConfig) -> Optional[float]:
         model=model,
         datamodule=datamodule,
         trainer=trainer,
-        # callbacks=callbacks,
-        # logger=logger,
+        callbacks=callbacks,
+        logger=logger,
     )
 
     # Print path to best checkpoint
