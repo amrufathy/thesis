@@ -34,11 +34,12 @@ def test(config: DictConfig) -> Optional[float]:
     # Init Lightning datamodule
     log.info(f"Instantiating datamodule <{config.datamodule._target_}>")
     datamodule: LightningDataModule = hydra.utils.instantiate(config.datamodule)
-    datamodule.setup()
 
     # Init Lightning model
     log.info(f"Instantiating model <{config.model._target_}>")
-    model: LightningModule = hydra.utils.instantiate(config.model)
+    model: LightningModule = hydra.utils.instantiate(config.model).load_from_checkpoint(
+        config.trainer.resume_from_checkpoint
+    )
 
     # Init Lightning callbacks
     callbacks: List[Callback] = []
@@ -73,9 +74,10 @@ def test(config: DictConfig) -> Optional[float]:
 
     # Test the model
     log.info("Starting testing!")
-    trainer.test(
-        model=model, ckpt_path=config.trainer.resume_from_checkpoint, test_dataloaders=datamodule.test_dataloader()
-    )
+    trainer.test(model=model, datamodule=datamodule)
+
+    # Print path to best checkpoint
+    log.info(f"Best checkpoint path:\n{trainer.checkpoint_callback.best_model_path}")
 
     # Make sure everything closed properly
     log.info("Finalizing!")
@@ -87,9 +89,6 @@ def test(config: DictConfig) -> Optional[float]:
         callbacks=callbacks,
         logger=logger,
     )
-
-    # Print path to best checkpoint
-    log.info(f"Best checkpoint path:\n{trainer.checkpoint_callback.best_model_path}")
 
     # Return metric score for hyperparameter optimization
     optimized_metric = config.get("optimized_metric")

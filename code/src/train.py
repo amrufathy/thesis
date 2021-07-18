@@ -79,6 +79,9 @@ def train(config: DictConfig) -> Optional[float]:
         log.info("Starting testing!")
         trainer.test()
 
+    # Print path to best checkpoint
+    log.info(f"Best checkpoint path:\n{trainer.checkpoint_callback.best_model_path}")
+
     # Make sure everything closed properly
     log.info("Finalizing!")
     utils.finish(
@@ -89,9 +92,6 @@ def train(config: DictConfig) -> Optional[float]:
         callbacks=callbacks,
         logger=logger,
     )
-
-    # Print path to best checkpoint
-    log.info(f"Best checkpoint path:\n{trainer.checkpoint_callback.best_model_path}")
 
     # Return metric score for hyperparameter optimization
     optimized_metric = config.get("optimized_metric")

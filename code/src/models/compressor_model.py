@@ -44,9 +44,9 @@ class CompressorModel(LightningModule):
         results = self.forward(batch)
 
         # fmt: off
-        self.log(f"val/loss", results["loss"], on_step=False, on_epoch=True)
-        self.log(f"val/acc", results["accuracy"], on_step=False, on_epoch=True)
-        self.log(f"val/bleu", results["bleu"], on_step=False, on_epoch=True)
+        self.log(f"test/loss", results["loss"], on_step=False, on_epoch=True)
+        self.log(f"test/acc", results["accuracy"], on_step=False, on_epoch=True)
+        self.log(f"test/bleu", results["bleu"], on_step=False, on_epoch=True)
         # fmt: on
 
         return results["loss"]

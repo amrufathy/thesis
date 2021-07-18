@@ -44,5 +44,5 @@ seed: 42
 # run train loop only
 run_train_only: False
 
-# run test loop only (overrides `run_train_only`)
+# run test loop only (if `True`: overrides `run_train_only`)
 run_test_only: False

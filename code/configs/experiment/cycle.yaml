@@ -32,5 +32,9 @@ datamodule:
 
 callbacks:
   model_checkpoint:
+    monitor: "val/exp_bleu"
     dirpath: "checkpoints/"
     filename: "cycle-${now:%m-%d_%H-%M}-{epoch:02d}"
+
+  early_stopping:
+    monitor: "val/exp_bleu"
