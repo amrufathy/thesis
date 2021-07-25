@@ -7,7 +7,7 @@ from transformers import BartTokenizerFast
 from src.models.modules import Compressor, Expander
 
 
-class CycleArchitecture(nn.Module):
+class CycleArchitectureCompress(nn.Module):
     def __init__(
         self,
         expander_model_name: str,
@@ -30,7 +30,7 @@ class CycleArchitecture(nn.Module):
         @param dict_input: contains input_ids, attention_masks, labels for both story and summary
         """
 
-        # INFO - Step 1: Expansion (Summary -> Story)
+        # INFO - Step 1: Expansion (Summary -> Generated Story)
         expansion_results = self.expander(dict_input)
         expansion_loss, expansion_logits, expansion_accuracy, expansion_bleu = (
             expansion_results["loss"],
@@ -44,15 +44,29 @@ class CycleArchitecture(nn.Module):
         if self.use_gumbel_softmax:
             # WIP
             # https://pytorch.org/docs/stable/nn.functional.html#gumbel-softmax
-            # Check: https://github.com/cbaziotis/seq3/blob/master/modules/modules.py#L515
-            generated_story_ids = gumbel_softmax(expansion_logits, dim=-1, hard=True)
+            # https://github.com/cbaziotis/seq3/blob/master/modules/modules.py#L515
+            # https://github.com/huggingface/transformers/issues/7693
+            # https://stackoverflow.com/questions/61567599/huggingface-bert-inputs-embeds-giving-unexpected-result
+
+            dists = gumbel_softmax(expansion_logits, dim=-1, hard=True)
+            embedding = self.compressor.compressor.get_input_embeddings().weight
+            flat_probs = dists.contiguous().view(-1, dists.size(-1))
+            flat_embs = flat_probs.mm(embedding)
+            embs = flat_embs.view(dists.size(0), dists.size(1), flat_embs.size(1))
+
+            # pass generated story embeddings to compressor
+            dict_input["story_embs"] = embs
+
+            del dists, embedding, flat_probs, flat_embs, embs
         else:
             generated_story_ids = argmax(expansion_logits, dim=-1)
 
-        # overwrite dict_input['story_ids'] (original story ids) with generated_story_ids
-        dict_input["story_ids"] = generated_story_ids
+            # overwrite dict_input['story_ids'] (original story ids) with generated_story_ids
+            dict_input["story_ids"] = generated_story_ids
 
-        del expansion_results, generated_story_ids
+            del generated_story_ids
+
+        del expansion_results
 
         # INFO - Step 2: Compression (Generated Story -> Reconstructed Summary)
         compression_results = self.compressor(dict_input)

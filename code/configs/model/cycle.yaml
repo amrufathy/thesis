@@ -1,7 +1,9 @@
 _target_: src.models.cycle_model.CycleModel
 
 name: 'Cycle'  # used for experiment logging
-expander_model_name: 'facebook/bart-base'
+expander_model_name: 'facebook/bart-base'  # specify HF transformer's model name
 compressor_model_name: 'facebook/bart-base'
-use_gumbel_softmax: False
-learning_rate: 5e-5
+direction: 'comp'  # direction to run the cycle (specified by reconstruction operation)
+use_gumbel_softmax: False  # whether to apply Gumbel-Softmax trick to sample intermediate output
+expander_learning_rate: 5e-5
+compressor_learning_rate: 5e-5

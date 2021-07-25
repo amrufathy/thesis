@@ -18,14 +18,14 @@ class ExpanderModel(LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self.model = Expander(
+        self.arch = Expander(
             model_name_or_path=model_name_or_path,
             max_generation_length=max_generation_length,
         )
         self.lr = learning_rate
 
     def forward(self, dict_input: Dict) -> Dict:
-        return self.model(dict_input)
+        return self.arch(dict_input)
 
     def training_step(self, batch, batch_idx):
         results = self.forward(batch)
@@ -64,11 +64,11 @@ class ExpanderModel(LightningModule):
         if isinstance(conditioning_sentences, str):
             conditioning_sentences = [conditioning_sentences]
 
-        return self.model.generate(conditioning_sentences)
+        return self.arch.generate(conditioning_sentences)
 
     def configure_optimizers(self):
         return AdamW(self.parameters(), lr=self.lr)
 
     @property
     def tokenizer(self) -> PreTrainedTokenizerFast:
-        return self.model.tokenizer
+        return self.arch.tokenizer

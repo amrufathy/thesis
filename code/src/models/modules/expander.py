@@ -42,23 +42,26 @@ class Expander(nn.Module):
         # story_msk_shifted = shift_tokens_right(dict_input['story_attn_msk'], 0, 1)
 
         # feed the model
-        expansion_results = self.expander(
-            **{
-                "input_ids": dict_input["summary_ids"],
-                "attention_mask": dict_input["summary_attn_msk"],
-                "decoder_input_ids": story_ids_shifted,
-                "decoder_attention_mask": dict_input["story_attn_msk"],
-                "labels": dict_input["story_labels"],
-            },
-            use_cache=False
-        )
+        feed_dict = {
+            "attention_mask": dict_input["summary_attn_msk"],
+            "decoder_input_ids": story_ids_shifted,
+            "decoder_attention_mask": dict_input["story_attn_msk"],
+            "labels": dict_input["story_labels"],
+        }
+
+        if "summary_embs" in dict_input:
+            feed_dict["inputs_embeds"] = dict_input["summary_embs"]
+        else:
+            feed_dict["input_ids"] = dict_input["summary_ids"]
+
+        expansion_results = self.expander(**feed_dict, use_cache=False)
 
         expansion_loss, expansion_logits = (
             expansion_results.loss,
             expansion_results.logits,
         )
 
-        del story_ids_shifted, expansion_results
+        del story_ids_shifted, expansion_results, feed_dict
 
         # compute metrics
 
@@ -94,6 +97,8 @@ class Expander(nn.Module):
             num_beams=5,
             do_sample=True,
             early_stopping=False,
+            top_p=0.9,
+            min_length=self.max_generation_length // 2,
             max_length=self.max_generation_length,
             length_penalty=1.5
         )

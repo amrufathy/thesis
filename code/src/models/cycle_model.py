@@ -4,7 +4,8 @@ from pytorch_lightning import LightningModule
 from transformers import PreTrainedTokenizerFast
 from transformers.optimization import AdamW
 
-from src.models.modules import CycleArchitecture
+from src.models.modules import CycleArchitectureCompress, CycleArchitectureExpand
+
 
 # TODO: use AutoModel & AutoTokenizer APIs
 
@@ -15,21 +16,31 @@ class CycleModel(LightningModule):
         name: str,
         expander_model_name: str,
         compressor_model_name: str,
+        direction: str,
         use_gumbel_softmax: bool = False,
-        learning_rate: float = 5e-5,
+        expander_learning_rate: float = 5e-5,
+        compressor_learning_rate: float = 5e-5,
     ):
         super().__init__()
         self.save_hyperparameters()
 
-        self.model = CycleArchitecture(
-            expander_model_name=expander_model_name,
-            compressor_model_name=compressor_model_name,
-            use_gumbel_softmax=use_gumbel_softmax,
-        )
-        self.lr = learning_rate
+        if direction in {"comp", "compress"}:
+            self.arch = CycleArchitectureCompress(
+                expander_model_name=expander_model_name,
+                compressor_model_name=compressor_model_name,
+                use_gumbel_softmax=use_gumbel_softmax,
+            )
+        else:
+            self.arch = CycleArchitectureExpand(
+                expander_model_name=expander_model_name,
+                compressor_model_name=compressor_model_name,
+                use_gumbel_softmax=use_gumbel_softmax,
+            )
+        self.comp_lr = compressor_learning_rate
+        self.exp_lr = expander_learning_rate
 
     def forward(self, dict_input: Dict) -> Dict:
-        return self.model(dict_input)
+        return self.arch(dict_input)
 
     def training_step(self, batch, batch_idx):
         results = self.forward(batch)
@@ -79,11 +90,17 @@ class CycleModel(LightningModule):
         if isinstance(conditioning_sentences, str):
             conditioning_sentences = [conditioning_sentences]
 
-        return self.model.generate(conditioning_sentences)
+        return self.arch.generate(conditioning_sentences)
 
     def configure_optimizers(self):
-        return AdamW(self.parameters(), lr=self.lr)
+        # noinspection PyTypeChecker
+        return AdamW(
+            [
+                {"params": self.arch.compressor.parameters(), "lr": self.comp_lr},
+                {"params": self.arch.expander.parameters(), "lr": self.exp_lr},
+            ]
+        )
 
     @property
     def tokenizer(self) -> PreTrainedTokenizerFast:
-        return self.model.tokenizer
+        return self.arch.tokenizer
