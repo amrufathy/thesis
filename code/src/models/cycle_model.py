@@ -4,8 +4,11 @@ from pytorch_lightning import LightningModule
 from transformers import PreTrainedTokenizerFast
 from transformers.optimization import AdamW
 
-from src.models.modules import CycleArchitectureCompress, CycleArchitectureExpand
-
+from src.models.modules import (
+    CycleArchitectureCompress,
+    CycleArchitectureDual,
+    CycleArchitectureExpand,
+)
 
 # TODO: use AutoModel & AutoTokenizer APIs
 
@@ -24,18 +27,25 @@ class CycleModel(LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        if direction in {"comp", "compress"}:
+        if direction in {"comp", "compress", "compressor"}:
             self.arch = CycleArchitectureCompress(
                 expander_model_name=expander_model_name,
                 compressor_model_name=compressor_model_name,
                 use_gumbel_softmax=use_gumbel_softmax,
             )
-        else:
+        elif direction in {"exp", "expand", "expander"}:
             self.arch = CycleArchitectureExpand(
                 expander_model_name=expander_model_name,
                 compressor_model_name=compressor_model_name,
                 use_gumbel_softmax=use_gumbel_softmax,
             )
+        else:
+            self.arch = CycleArchitectureDual(
+                expander_model_name=expander_model_name,
+                compressor_model_name=compressor_model_name,
+                use_gumbel_softmax=use_gumbel_softmax,
+            )
+
         self.comp_lr = compressor_learning_rate
         self.exp_lr = expander_learning_rate
 

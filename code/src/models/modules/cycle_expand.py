@@ -5,6 +5,7 @@ from torch.nn.functional import gumbel_softmax
 from transformers import BartTokenizerFast
 
 from src.models.modules import Compressor, Expander
+from src.utils.model_utils import get_gumbel_sampled_embeddings
 
 
 class CycleArchitectureExpand(nn.Module):
@@ -42,17 +43,14 @@ class CycleArchitectureExpand(nn.Module):
         # INFO: if using gumbel then the whole cycle is differentiable
         #  if not using gumbel then dual learning technique
         if self.use_gumbel_softmax:
-            # WIP
-            dists = gumbel_softmax(compression_logits, dim=-1, hard=True)
-            embedding = self.expander.expander.get_input_embeddings().weight
-            flat_probs = dists.contiguous().view(-1, dists.size(-1))
-            flat_embs = flat_probs.mm(embedding)
-            embs = flat_embs.view(dists.size(0), dists.size(1), flat_embs.size(1))
+            embs = get_gumbel_sampled_embeddings(
+                compression_logits, self.expander.expander.get_input_embeddings().weight
+            )
 
-            # pass generated story embeddings to compressor
+            # pass generated summary embeddings to compressor
             dict_input["summary_embs"] = embs
 
-            del dists, embedding, flat_probs, flat_embs, embs
+            del embs
         else:
             generated_summary_ids = argmax(compression_logits, dim=-1)
 

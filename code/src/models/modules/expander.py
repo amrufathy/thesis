@@ -33,13 +33,12 @@ class Expander(nn.Module):
         @param dict_input: contains input_ids, attention_masks, labels for both story and summary
         """
 
-        # shift `decoder ids` & `mask` to the right
+        # shift `decoder ids` to the right
         story_ids_shifted = shift_tokens_right(
             dict_input["story_ids"],
             self.tokenizer.pad_token_id,
             self.tokenizer.eos_token_id,
         )
-        # story_msk_shifted = shift_tokens_right(dict_input['story_attn_msk'], 0, 1)
 
         # feed the model
         feed_dict = {

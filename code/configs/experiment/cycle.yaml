@@ -19,15 +19,15 @@ trainer:
   profiler: "simple"
   log_gpu_memory: True
   resume_from_checkpoint: null
-  accumulate_grad_batches: 4  # regularize gradient updating with other models
+  accumulate_grad_batches: 2  # regularize gradient updating with other models
   # batch size of compressor / batch size of cycle
 
 model:
-  direction: 'comp'
+  direction: 'dual'
   use_gumbel_softmax: False
 
 datamodule:
-  batch_size: 16
+  batch_size: 32
   percentage: 100  # percentage of dataset to load
   load_dataset_from_file: False
 

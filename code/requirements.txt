@@ -1,8 +1,8 @@
 # --------- pytorch --------- #
 torch==1.8.1
 torchvision==0.9.1
-pytorch-lightning>=1.3.2
-torchmetrics>=0.3.2
+pytorch-lightning==1.3.8
+torchmetrics==0.4.1
 torchtext==0.9.1
 
 # --------- hydra --------- #
@@ -37,9 +37,10 @@ seaborn
 pudb
 pandas
 # dvc
+tqdm==4.43.0
 
 # --------- NLP --------- #
-transformers
-tokenizers
-datasets
-sacrebleu
+transformers==4.7.0
+tokenizers==0.10.3
+datasets==1.10.0
+sacrebleu==1.5.1
