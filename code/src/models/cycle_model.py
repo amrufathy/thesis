@@ -16,13 +16,13 @@ from src.models.modules import (
 class CycleModel(LightningModule):
     def __init__(
         self,
-        name: str,
         expander_model_name: str,
         compressor_model_name: str,
         direction: str,
         use_gumbel_softmax: bool = False,
         expander_learning_rate: float = 5e-5,
         compressor_learning_rate: float = 5e-5,
+        **kwargs,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -56,17 +56,17 @@ class CycleModel(LightningModule):
         results = self.forward(batch)
 
         # fmt: off
-        self.log(f"train/loss", results["loss"], on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"train/exp_loss", results["exp_loss"], on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"train/comp_loss", results["comp_loss"], on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/loss", results["loss"], on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/exp_loss", results["exp_loss"], on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/comp_loss", results["comp_loss"], on_step=True, on_epoch=True, prog_bar=True)
 
-        self.log(f"train/acc", results["acc"], on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"train/exp_acc", results["exp_acc"], on_step=True, on_epoch=True)
-        self.log(f"train/comp_acc", results["comp_acc"], on_step=True, on_epoch=True)
+        self.log("train/acc", results["acc"], on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/exp_acc", results["exp_acc"], on_step=True, on_epoch=True)
+        self.log("train/comp_acc", results["comp_acc"], on_step=True, on_epoch=True)
 
-        self.log(f"train/bleu", results["bleu"], on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"train/exp_bleu", results["exp_bleu"], on_step=True, on_epoch=True)
-        self.log(f"train/comp_bleu", results["comp_bleu"], on_step=True, on_epoch=True)
+        self.log("train/bleu", results["bleu"], on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/exp_bleu", results["exp_bleu"], on_step=True, on_epoch=True)
+        self.log("train/comp_bleu", results["comp_bleu"], on_step=True, on_epoch=True)
         # fmt: on
 
         return results["loss"]
@@ -111,6 +111,5 @@ class CycleModel(LightningModule):
             ]
         )
 
-    @property
     def tokenizer(self) -> PreTrainedTokenizerFast:
         return self.arch.tokenizer

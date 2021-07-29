@@ -102,3 +102,6 @@ class Compressor(nn.Module):
         generated_summaries = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
         return generated_summaries
+
+    def get_embeddings(self):
+        return self.compressor.get_input_embeddings().weight

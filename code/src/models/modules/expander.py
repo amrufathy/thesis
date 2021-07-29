@@ -104,3 +104,6 @@ class Expander(nn.Module):
         generated_stories = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
         return generated_stories
+
+    def get_embeddings(self):
+        return self.expander.get_input_embeddings().weight

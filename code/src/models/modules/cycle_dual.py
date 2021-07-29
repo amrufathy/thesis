@@ -1,7 +1,6 @@
 from typing import Dict, List, Tuple
 
 from torch import argmax, cuda, device, mean, nn, tensor
-from torch.nn.functional import gumbel_softmax
 from transformers import BartTokenizerFast
 
 from src.models.modules import Compressor, Expander
@@ -51,9 +50,7 @@ class CycleArchitectureDual(nn.Module):
         )
 
         if self.use_gumbel_softmax:
-            embs = get_gumbel_sampled_embeddings(
-                expansion_logits_1, self.compressor.compressor.get_input_embeddings().weight
-            )
+            embs = get_gumbel_sampled_embeddings(expansion_logits_1, self.compressor.get_embeddings())
 
             # pass generated story embeddings to compressor
             dict_input["story_embs"] = embs
@@ -101,9 +98,7 @@ class CycleArchitectureDual(nn.Module):
         )
 
         if self.use_gumbel_softmax:
-            embs = get_gumbel_sampled_embeddings(
-                compression_logits_2, self.expander.expander.get_input_embeddings().weight
-            )
+            embs = get_gumbel_sampled_embeddings(compression_logits_2, self.expander.get_embeddings())
 
             # pass generated summary embeddings to compressor
             dict_input["summary_embs"] = embs

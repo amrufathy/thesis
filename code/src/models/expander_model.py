@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from pytorch_lightning import LightningModule
 from transformers import PreTrainedTokenizerFast
@@ -8,13 +8,7 @@ from src.models.modules import Expander
 
 
 class ExpanderModel(LightningModule):
-    def __init__(
-        self,
-        name: str,
-        model_name_or_path: str,
-        learning_rate: float = 5e-5,
-        max_generation_length: int = 70,
-    ):
+    def __init__(self, model_name_or_path: str, learning_rate: float = 5e-5, max_generation_length: int = 70, **kwargs):
         super().__init__()
         self.save_hyperparameters()
 
@@ -31,34 +25,29 @@ class ExpanderModel(LightningModule):
         results = self.forward(batch)
 
         # fmt: off
-        self.log(f"train/loss", results["loss"], on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"train/acc", results["accuracy"], on_step=True, on_epoch=True, prog_bar=True)
-        self.log(f"train/bleu", results["bleu"], on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/loss", results["loss"], on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/acc", results["accuracy"], on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/bleu", results["bleu"], on_step=True, on_epoch=True, prog_bar=True)
+        # fmt: on
+
+        return results["loss"]
+
+    def val_test_step(self, batch, prefix: str) -> Optional[Dict]:
+        results = self.forward(batch)
+
+        # fmt: off
+        self.log(f"{prefix}/loss", results["loss"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/acc", results["accuracy"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/bleu", results["bleu"], on_step=False, on_epoch=True)
         # fmt: on
 
         return results["loss"]
 
     def validation_step(self, batch, batch_idx):
-        results = self.forward(batch)
-
-        # fmt: off
-        self.log(f"val/loss", results["loss"], on_step=False, on_epoch=True)
-        self.log(f"val/acc", results["accuracy"], on_step=False, on_epoch=True)
-        self.log(f"val/bleu", results["bleu"], on_step=False, on_epoch=True)
-        # fmt: on
-
-        return results["loss"]
+        return self.val_test_step(batch, "val")
 
     def test_step(self, batch, batch_idx):
-        results = self.forward(batch)
-
-        # fmt: off
-        self.log(f"test/loss", results["loss"], on_step=False, on_epoch=True)
-        self.log(f"test/acc", results["accuracy"], on_step=False, on_epoch=True)
-        self.log(f"test/bleu", results["bleu"], on_step=False, on_epoch=True)
-        # fmt: on
-
-        return results["loss"]
+        return self.val_test_step(batch, "test")
 
     def generate(self, conditioning_sentences: Union[str, List[str]]) -> List[str]:
         if isinstance(conditioning_sentences, str):
@@ -69,6 +58,5 @@ class ExpanderModel(LightningModule):
     def configure_optimizers(self):
         return AdamW(self.parameters(), lr=self.lr)
 
-    @property
     def tokenizer(self) -> PreTrainedTokenizerFast:
         return self.arch.tokenizer

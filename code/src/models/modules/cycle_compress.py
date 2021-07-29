@@ -42,9 +42,7 @@ class CycleArchitectureCompress(nn.Module):
         # INFO: if using gumbel then the whole cycle is differentiable
         #  if not using gumbel then dual learning technique
         if self.use_gumbel_softmax:
-            embs = get_gumbel_sampled_embeddings(
-                expansion_logits, self.compressor.compressor.get_input_embeddings().weight
-            )
+            embs = get_gumbel_sampled_embeddings(expansion_logits, self.compressor.get_embeddings())
 
             # pass generated story embeddings to compressor
             dict_input["story_embs"] = embs
