@@ -82,6 +82,8 @@ class CycleArchitectureDual(nn.Module):
 
         # restore dict_input
         dict_input["story_ids"] = original_input["story_ids"]
+        if self.use_gumbel_softmax:
+            dict_input.pop("story_embs")
 
         # ==============================================
         # ==============================================
