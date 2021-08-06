@@ -16,7 +16,9 @@ class CycleArchitectureDual(nn.Module):
     ):
         super().__init__()
 
-        self.tokenizer = BartTokenizerFast.from_pretrained("facebook/bart-base")
+        assert expander_model_name == compressor_model_name
+
+        self.tokenizer = BartTokenizerFast.from_pretrained(expander_model_name)
         self.expander = Expander(model_name_or_path=expander_model_name, tokenizer=self.tokenizer)
         self.compressor = Compressor(model_name_or_path=compressor_model_name, tokenizer=self.tokenizer)
         self.device = device("cuda") if cuda.is_available() else device("cpu")

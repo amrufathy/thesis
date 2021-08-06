@@ -39,3 +39,7 @@ callbacks:
 
   early_stopping:
     monitor: "val/exp_bleu"
+
+logger:
+  wandb:
+    id: null

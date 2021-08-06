@@ -16,7 +16,9 @@ class CycleArchitectureCompress(nn.Module):
     ):
         super().__init__()
 
-        self.tokenizer = BartTokenizerFast.from_pretrained("facebook/bart-base")
+        assert expander_model_name == compressor_model_name
+
+        self.tokenizer = BartTokenizerFast.from_pretrained(expander_model_name)
         self.expander = Expander(model_name_or_path=expander_model_name, tokenizer=self.tokenizer)
         self.compressor = Compressor(model_name_or_path=compressor_model_name, tokenizer=self.tokenizer)
         self.device = device("cuda") if cuda.is_available() else device("cpu")
@@ -56,7 +58,7 @@ class CycleArchitectureCompress(nn.Module):
 
             del generated_story_ids
 
-        del expansion_results
+        # del expansion_results
 
         # INFO - Step 2: Compression (Generated Story -> Reconstructed Summary)
         compression_results = self.compressor(dict_input)
@@ -87,6 +89,16 @@ class CycleArchitectureCompress(nn.Module):
             "bleu": aggr_bleu.detach(),
             "exp_bleu": expansion_bleu,
             "comp_bleu": compression_bleu,
+            # extra exp metric
+            "exp_bleu1": expansion_results["bleu1"],
+            "exp_bleu2": expansion_results["bleu2"],
+            "exp_bleu3": expansion_results["bleu3"],
+            "exp_bleu4": expansion_results["bleu4"],
+            "exp_ppl": expansion_results["ppl"],
+            "exp_dstnct1": expansion_results["distinct1"],
+            "exp_dstnct2": expansion_results["distinct2"],
+            "exp_dstnct3": expansion_results["distinct3"],
+            "exp_dstnct4": expansion_results["distinct4"],
         }
 
     def generate(self, conditioning_sentences: List[str]) -> Tuple[List[str], List[str]]:

@@ -67,6 +67,18 @@ class CycleModel(LightningModule):
         self.log("train/bleu", results["bleu"], on_step=True, on_epoch=True, prog_bar=True)
         self.log("train/exp_bleu", results["exp_bleu"], on_step=True, on_epoch=True)
         self.log("train/comp_bleu", results["comp_bleu"], on_step=True, on_epoch=True)
+
+        self.log("train/exp_ppl", results["exp_ppl"], on_step=False, on_epoch=True)
+
+        self.log("train/exp_bleu1", results["exp_bleu1"], on_step=False, on_epoch=True)
+        self.log("train/exp_bleu2", results["exp_bleu2"], on_step=False, on_epoch=True)
+        self.log("train/exp_bleu3", results["exp_bleu3"], on_step=False, on_epoch=True)
+        self.log("train/exp_bleu4", results["exp_bleu4"], on_step=False, on_epoch=True)
+
+        self.log("train/exp_dstnct1", results["exp_dstnct1"], on_step=False, on_epoch=True)
+        self.log("train/exp_dstnct2", results["exp_dstnct2"], on_step=False, on_epoch=True)
+        self.log("train/exp_dstnct3", results["exp_dstnct3"], on_step=False, on_epoch=True)
+        self.log("train/exp_dstnct4", results["exp_dstnct4"], on_step=False, on_epoch=True)
         # fmt: on
 
         return results["loss"]
@@ -86,6 +98,18 @@ class CycleModel(LightningModule):
         self.log(f"{prefix}/bleu", results["bleu"], on_step=False, on_epoch=True)
         self.log(f"{prefix}/exp_bleu", results["exp_bleu"], on_step=False, on_epoch=True)
         self.log(f"{prefix}/comp_bleu", results["comp_bleu"], on_step=False, on_epoch=True)
+
+        self.log(f"{prefix}/exp_ppl", results["exp_ppl"], on_step=False, on_epoch=True)
+
+        self.log(f"{prefix}/exp_bleu1", results["exp_bleu1"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/exp_bleu2", results["exp_bleu2"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/exp_bleu3", results["exp_bleu3"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/exp_bleu4", results["exp_bleu4"], on_step=False, on_epoch=True)
+
+        self.log(f"{prefix}/exp_dstnct1", results["exp_dstnct1"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/exp_dstnct2", results["exp_dstnct2"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/exp_dstnct3", results["exp_dstnct3"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/exp_dstnct4", results["exp_dstnct4"], on_step=False, on_epoch=True)
         # fmt: on
 
         return results["loss"]

@@ -29,3 +29,7 @@ callbacks:
   model_checkpoint:
     dirpath: "checkpoints/"
     filename: "expander-${now:%m-%d_%H-%M}-{epoch:02d}"
+
+logger:
+  wandb:
+    id: null

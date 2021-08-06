@@ -14,14 +14,14 @@ hydra-optuna-sweeper==1.1.0.dev1
 # hydra-submitit-launcher==1.1.0
 
 # --------- loggers --------- #
-wandb>=0.10.30
-neptune-client
+wandb==0.11.0
+# neptune-client
 # mlflow
 # comet-ml
 # torch_tb_profiler
 
 # --------- linters --------- #
-pre-commit
+# pre-commit
 black
 isort
 flake8
@@ -32,15 +32,17 @@ python-dotenv
 rich
 pytest
 sh
-scikit-learn
-seaborn
-pudb
-pandas
+# scikit-learn
+# seaborn
+# pudb
+pandas==1.1.5
 # dvc
 tqdm==4.43.0
+numpy==1.19.5
 
 # --------- NLP --------- #
 transformers==4.7.0
 tokenizers==0.10.3
 datasets==1.10.0
 sacrebleu==1.5.1
+nltk==3.6.2

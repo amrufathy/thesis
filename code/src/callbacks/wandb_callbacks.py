@@ -87,7 +87,7 @@ class TextGenerationCallback(Callback):
 
     def on_fit_end(self, trainer, pl_module):
         dataset = load_from_disk(self.data_dir)["val"]  # use only val data
-        tokenizer = pl_module.tokenizer
+        tokenizer = pl_module.tokenizer()
 
         if self.limit == -1:  # no limit
             self.limit = dataset["summary_ids"].size(0)

@@ -1,0 +1,14 @@
+_target_: src.datamodules.writingprompts_datamodule.WritingPromptsDataModule
+
+data_dir: ${data_dir}/.writingPrompts  # data_dir is specified in config.yaml
+batch_size: 32
+percentage: 100  # percentage of dataset to load
+shuffle: True  # `True` shuffles dataset every epoch
+padding: 'max_length'  # padding strategy (check `Tokenizers` documentation)
+truncation: True  # truncation strategy (check `Tokenizers` documentation)
+max_story_length: 150  # max story length in tokens (enforced)
+max_summary_length: 50  # max summary length in tokens (enforced)
+load_dataset_from_file: True
+train_files: [ 'train.wp_source', 'train.wp_target' ]
+# val_files: [ 'cloze_test_val_spring2016.csv', 'cloze_test_val_winter2018.csv' ]
+processed_data_dir: '${data_dir}/.processed_writingprompts'

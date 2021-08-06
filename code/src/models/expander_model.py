@@ -26,8 +26,20 @@ class ExpanderModel(LightningModule):
 
         # fmt: off
         self.log("train/loss", results["loss"], on_step=True, on_epoch=True, prog_bar=True)
-        self.log("train/acc", results["accuracy"], on_step=True, on_epoch=True, prog_bar=True)
         self.log("train/bleu", results["bleu"], on_step=True, on_epoch=True, prog_bar=True)
+
+        self.log("train/ppl", results["ppl"], on_step=False, on_epoch=True)
+        self.log("train/acc", results["accuracy"], on_step=False, on_epoch=True)
+
+        self.log("train/bleu1", results["bleu1"], on_step=False, on_epoch=True)
+        self.log("train/bleu2", results["bleu2"], on_step=False, on_epoch=True)
+        self.log("train/bleu3", results["bleu3"], on_step=False, on_epoch=True)
+        self.log("train/bleu4", results["bleu4"], on_step=False, on_epoch=True)
+
+        self.log("train/distinct1", results["distinct1"], on_step=False, on_epoch=True)
+        self.log("train/distinct2", results["distinct2"], on_step=False, on_epoch=True)
+        self.log("train/distinct3", results["distinct3"], on_step=False, on_epoch=True)
+        self.log("train/distinct4", results["distinct4"], on_step=False, on_epoch=True)
         # fmt: on
 
         return results["loss"]
@@ -39,6 +51,17 @@ class ExpanderModel(LightningModule):
         self.log(f"{prefix}/loss", results["loss"], on_step=False, on_epoch=True)
         self.log(f"{prefix}/acc", results["accuracy"], on_step=False, on_epoch=True)
         self.log(f"{prefix}/bleu", results["bleu"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/ppl", results["ppl"], on_step=False, on_epoch=True)
+
+        self.log(f"{prefix}/bleu1", results["bleu1"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/bleu2", results["bleu2"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/bleu3", results["bleu3"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/bleu4", results["bleu4"], on_step=False, on_epoch=True)
+
+        self.log(f"{prefix}/distinct1", results["distinct1"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/distinct2", results["distinct2"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/distinct3", results["distinct3"], on_step=False, on_epoch=True)
+        self.log(f"{prefix}/distinct4", results["distinct4"], on_step=False, on_epoch=True)
         # fmt: on
 
         return results["loss"]

@@ -2,29 +2,23 @@ from os.path import join
 from typing import Dict, List, Union
 
 import numpy as np
-import pandas as pd
 import torch
-from datasets import DatasetDict, load_dataset, load_from_disk
+from datasets import DatasetDict, Features, concatenate_datasets, load_dataset, load_from_disk
 from pytorch_lightning import LightningDataModule
 from torch.utils.data.dataloader import DataLoader
 from transformers import BartTokenizerFast
 
 """
-ROC dataset
+Writing Prompts dataset
 
 Statistics about story title length:
 (All numbers after tokenization)
-Max: 33, Mean: 5.05, Std Dev: 1.32, Median: 5.00,
-95 percentile: 7.0, 99 percentile: 9.0
-
-Statistics about story length
-(All numbers after tokenization)
-Max: 110, Mean: 53.35, Std Dev: 9.73, Median: 53.00,
-95 percentile: 70.0, 99 percentile: 75.0
+Max: 99, Mean: 32.03, Std Dev: 14.99, Median: 30.00,
+95 percentile: 61.0, 99 percentile: 70.0
 """
 
 
-class ROCStoriesDataModule(LightningDataModule):
+class WritingPromptsDataModule(LightningDataModule):
     """
     Loads ROC Stories Dataset
 
@@ -39,8 +33,8 @@ class ROCStoriesDataModule(LightningDataModule):
         train_files: Union[str, List[str]],
         batch_size: int = 32,
         percentage: int = 100,
-        max_story_length: int = 70,
-        max_summary_length: int = 7,
+        max_story_length: int = 150,
+        max_summary_length: int = 50,
         shuffle: bool = True,
         truncation: Union[str, bool] = True,
         padding: Union[str, bool] = "max_length",
@@ -68,19 +62,14 @@ class ROCStoriesDataModule(LightningDataModule):
         pass
 
     def tokenize_example(self, example: Dict):
-        example = pd.DataFrame(example)
-        wanted_keys = ["sentence1", "sentence2", "sentence3", "sentence4", "sentence5"]
-        example["story"] = example.loc[:, wanted_keys].apply(lambda x: " ".join(x), axis=1)
-        example = example.to_dict(orient="list")
-
         story_embeddings = self.tokenizer(
-            example["story"],
+            example["target"],
             padding=self.padding,
             truncation=self.truncation,
             max_length=self.max_story_length,
         )
         summary_embeddings = self.tokenizer(
-            example["storytitle"],
+            example["source"],
             padding=self.padding,
             truncation=self.truncation,
             max_length=self.max_summary_length,
@@ -103,14 +92,26 @@ class ROCStoriesDataModule(LightningDataModule):
 
     def setup(self, *args, **kwargs):
         if not self.load_from_file:
-            # load dataset from csv file
-            dataset = load_dataset(
-                "csv",
-                data_files={"train": self.train_paths},
+            # load dataset from text files
+            src_path, trgt_path = self.train_paths
+
+            src_dataset = load_dataset(
+                "text",
+                data_files={"train": src_path},
                 split=f"train[:{self.percentage}%]",
+                features=Features.from_dict({"source": {"dtype": "string", "_type": "Value"}}),
             )
 
-            # self.stats(dataset)
+            trgt_dataset = load_dataset(
+                "text",
+                data_files={"train": trgt_path},
+                split=f"train[:{self.percentage}%]",
+                features=Features.from_dict({"target": {"dtype": "string", "_type": "Value"}}),
+            )
+
+            dataset = concatenate_datasets([src_dataset, trgt_dataset], axis=1)
+
+            del src_dataset, trgt_dataset
 
             # train/val/test split -> 80/10/10
             train_test_data = dataset.train_test_split(test_size=0.2, seed=42)
@@ -125,9 +126,7 @@ class ROCStoriesDataModule(LightningDataModule):
 
             # tokenize data
             self.tokenized_dataset = dataset.map(self.tokenize_example, batched=True)
-            self.tokenized_dataset.remove_columns_(
-                ["storyid", "sentence1", "sentence2", "sentence3", "sentence4", "sentence5"]
-            )
+            self.tokenized_dataset.remove_columns_(["source", "target"])
 
             self.tokenized_dataset.save_to_disk(self.processed_dataset_path)
 
@@ -173,8 +172,8 @@ class ROCStoriesDataModule(LightningDataModule):
         def length_stats(lst):
             lengths = [len(i) for i in lst]
             print(
-                f"Max: {np.max(lengths)}, Mean: {np.mean(lengths):.2f}, Std Dev: {np.std(lengths):.2f}, "
-                f"Median: {np.median(lengths):.2f}, 95 percentile: {np.percentile(lengths, 95)}, "
+                f"Max: {np.max(lengths)}, Mean: {np.mean(lengths):.2f}, Std Dev: {np.std(lengths):.2f},"
+                f"Median: {np.median(lengths):.2f}, 95 percentile: {np.percentile(lengths, 95)},"
                 f"99 percentile: {np.percentile(lengths, 99)}"
             )
 
@@ -182,16 +181,13 @@ class ROCStoriesDataModule(LightningDataModule):
         print(dataset)
 
         # stats for story titles/summaries
-        titles = dataset["storytitle"]
+        titles = dataset["source"]
         tok_titles = self.tokenizer(titles)
         length_stats(list(tok_titles.values())[0])
+        length_stats(list(titles))
 
         # stats for stories
-        dataset = pd.DataFrame(dataset)
-        wanted_keys = ["sentence1", "sentence2", "sentence3", "sentence4", "sentence5"]
-        dataset["story"] = dataset.loc[:, wanted_keys].apply(lambda x: " ".join(x), axis=1)
-        dataset = dataset.to_dict(orient="list")
-
-        stories = dataset["story"]
-        tok_stories = self.tokenizer(stories)
-        length_stats(list(tok_stories.values())[0])
+        # stories = dataset["target"]
+        # tok_stories = self.tokenizer(stories)
+        # length_stats(list(stories.values())[0])
+        # length_stats(list(stories))

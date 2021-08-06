@@ -1,10 +1,12 @@
 from typing import Dict, List
 
 from sacrebleu import corpus_bleu
-from torch import argmax, cuda, device, nn, tensor
+from torch import argmax, cuda, device, exp, nn, tensor
 from torchmetrics.functional import accuracy
 from transformers import BartForConditionalGeneration, BartTokenizerFast
 from transformers.models.bart.modeling_bart import shift_tokens_right
+
+from src.utils.model_utils import distinct_n
 
 
 class Expander(nn.Module):
@@ -75,6 +77,20 @@ class Expander(nn.Module):
         references = self.tokenizer.batch_decode(masked_labels, skip_special_tokens=True)
 
         bleu = corpus_bleu(predictions, [references])
+        bleu_aggr = tensor(bleu.score, device=self.device).detach()
+        bleu1 = tensor(bleu.precisions[0], device=self.device).detach()
+        bleu2 = tensor(bleu.precisions[1], device=self.device).detach()
+        bleu3 = tensor(bleu.precisions[2], device=self.device).detach()
+        bleu4 = tensor(bleu.precisions[3], device=self.device).detach()
+
+        # distinctness
+        distinct1 = tensor(distinct_n(predictions, ngram_size=1), device=self.device).detach()
+        distinct2 = tensor(distinct_n(predictions, ngram_size=2), device=self.device).detach()
+        distinct3 = tensor(distinct_n(predictions, ngram_size=3), device=self.device).detach()
+        distinct4 = tensor(distinct_n(predictions, ngram_size=4), device=self.device).detach()
+
+        # perplexity
+        perplexity = exp(expansion_loss).detach()
 
         del generated_story_ids, masked_labels, predictions, references
 
@@ -82,7 +98,16 @@ class Expander(nn.Module):
             "loss": expansion_loss,
             "logits": expansion_logits.detach(),
             "accuracy": acc.detach(),
-            "bleu": tensor(bleu.score, device=self.device).detach(),
+            "bleu": bleu_aggr,
+            "bleu1": bleu1,
+            "bleu2": bleu2,
+            "bleu3": bleu3,
+            "bleu4": bleu4,
+            "ppl": perplexity,
+            "distinct1": distinct1,
+            "distinct2": distinct2,
+            "distinct3": distinct3,
+            "distinct4": distinct4,
         }
 
     def generate(self, conditioning_sentences: List[str]) -> List[str]:

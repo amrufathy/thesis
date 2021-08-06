@@ -2,9 +2,9 @@
 
 # specify here default training configuration
 defaults:
-  - trainer: minimal.yaml  # default_trainer.yaml
-  - model: cycle_model.yaml  # mnist_model.yaml
-  - datamodule: rocstories_datamodule.yaml  # mnist_datamodule.yaml
+  - trainer: minimal.yaml
+  - model: cycle.yaml
+  - datamodule: rocstories.yaml
   - callbacks: wandb.yaml  # set this to null if you don't want to use callbacks
   - logger: wandb.yaml  # set logger here or use command line (e.g. `python run.py logger=wandb`)
 
