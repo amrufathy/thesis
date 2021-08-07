@@ -43,12 +43,12 @@ class CycleArchitectureDual(nn.Module):
         original_input = dict_input.copy()
 
         # INFO - Step 1: Expansion (Summary -> Generated Story)
-        expansion_results = self.expander(dict_input)
+        expansion_results_1 = self.expander(dict_input)
         expansion_loss_1, expansion_logits_1, expansion_accuracy_1, expansion_bleu_1 = (
-            expansion_results["loss"],
-            expansion_results["logits"],
-            expansion_results["accuracy"],
-            expansion_results["bleu"],
+            expansion_results_1["loss"],
+            expansion_results_1["logits"],
+            expansion_results_1["accuracy"],
+            expansion_results_1["bleu"],
         )
 
         if self.use_gumbel_softmax:
@@ -66,7 +66,7 @@ class CycleArchitectureDual(nn.Module):
 
             del generated_story_ids
 
-        del expansion_results
+        # del expansion_results_1
 
         # INFO - Step 2: Compression (Generated Story -> Reconstructed Summary)
         compression_results = self.compressor(dict_input)
@@ -117,15 +117,15 @@ class CycleArchitectureDual(nn.Module):
         del compression_results
 
         # INFO - Step 2: Expansion (Generated Summary -> Reconstructed Story)
-        expansion_results = self.expander(dict_input)
+        expansion_results_2 = self.expander(dict_input)
         expansion_loss_2, expansion_logits_2, expansion_accuracy_2, expansion_bleu_2 = (
-            expansion_results["loss"],
-            expansion_results["logits"],
-            expansion_results["accuracy"],
-            expansion_results["bleu"],
+            expansion_results_2["loss"],
+            expansion_results_2["logits"],
+            expansion_results_2["accuracy"],
+            expansion_results_2["bleu"],
         )
 
-        del expansion_results
+        # del expansion_results_2
 
         # ==============================================
         # ==============================================
@@ -145,6 +145,26 @@ class CycleArchitectureDual(nn.Module):
         aggr_accuracy = mean(tensor([expansion_accuracy, compression_accuracy], device=self.device))
         aggr_bleu = mean(tensor([expansion_bleu, compression_bleu], device=self.device))
 
+        exp_bleu1 = mean(tensor([expansion_results_1["bleu1"], expansion_results_2["bleu1"]], device=self.device))
+        exp_bleu2 = mean(tensor([expansion_results_1["bleu2"], expansion_results_2["bleu2"]], device=self.device))
+        exp_bleu3 = mean(tensor([expansion_results_1["bleu3"], expansion_results_2["bleu3"]], device=self.device))
+        exp_bleu4 = mean(tensor([expansion_results_1["bleu4"], expansion_results_2["bleu4"]], device=self.device))
+
+        exp_dstnct1 = mean(
+            tensor([expansion_results_1["distinct1"], expansion_results_2["distinct1"]], device=self.device)
+        )
+        exp_dstnct2 = mean(
+            tensor([expansion_results_1["distinct2"], expansion_results_2["distinct2"]], device=self.device)
+        )
+        exp_dstnct3 = mean(
+            tensor([expansion_results_1["distinct3"], expansion_results_2["distinct3"]], device=self.device)
+        )
+        exp_dstnct4 = mean(
+            tensor([expansion_results_1["distinct4"], expansion_results_2["distinct4"]], device=self.device)
+        )
+
+        exp_ppl = mean(tensor([expansion_results_1["ppl"], expansion_results_2["ppl"]], device=self.device))
+
         return {
             # losses
             "loss": total_loss,
@@ -158,6 +178,16 @@ class CycleArchitectureDual(nn.Module):
             "bleu": aggr_bleu.detach(),
             "exp_bleu": expansion_bleu.detach(),
             "comp_bleu": compression_bleu.detach(),
+            # extra exp metric
+            "exp_bleu1": exp_bleu1.detach(),
+            "exp_bleu2": exp_bleu2.detach(),
+            "exp_bleu3": exp_bleu3.detach(),
+            "exp_bleu4": exp_bleu4.detach(),
+            "exp_ppl": exp_ppl.detach(),
+            "exp_dstnct1": exp_dstnct1.detach(),
+            "exp_dstnct2": exp_dstnct2.detach(),
+            "exp_dstnct3": exp_dstnct3.detach(),
+            "exp_dstnct4": exp_dstnct4.detach(),
         }
 
     def generate(self, conditioning_sentences: List[str]) -> Tuple[List[str], List[str]]:

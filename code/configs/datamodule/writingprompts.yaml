@@ -10,5 +10,6 @@ max_story_length: 150  # max story length in tokens (enforced)
 max_summary_length: 50  # max summary length in tokens (enforced)
 load_dataset_from_file: True
 train_files: [ 'train.wp_source', 'train.wp_target' ]
-# val_files: [ 'cloze_test_val_spring2016.csv', 'cloze_test_val_winter2018.csv' ]
+val_files: [ 'valid.wp_source', 'valid.wp_target' ]
+test_files: [ 'test.wp_source', 'test.wp_target' ]
 processed_data_dir: '${data_dir}/.processed_writingprompts'

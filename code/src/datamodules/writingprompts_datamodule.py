@@ -31,6 +31,8 @@ class WritingPromptsDataModule(LightningDataModule):
         data_dir: str,
         processed_data_dir: str,
         train_files: Union[str, List[str]],
+        val_files: Union[str, List[str]],
+        test_files: Union[str, List[str]],
         batch_size: int = 32,
         percentage: int = 100,
         max_story_length: int = 150,
@@ -54,6 +56,8 @@ class WritingPromptsDataModule(LightningDataModule):
 
         self.processed_dataset_path = processed_data_dir
         self.train_paths = [join(data_dir, path) for path in train_files]
+        self.val_paths = [join(data_dir, path) for path in val_files]
+        self.test_paths = [join(data_dir, path) for path in test_files]
 
         self.tokenized_dataset = None
         self.tokenizer = BartTokenizerFast.from_pretrained("facebook/bart-base")
@@ -93,34 +97,15 @@ class WritingPromptsDataModule(LightningDataModule):
     def setup(self, *args, **kwargs):
         if not self.load_from_file:
             # load dataset from text files
-            src_path, trgt_path = self.train_paths
+            train_dataset = self.load_concatenated_dataset(self.train_paths)
+            val_dataset = self.load_concatenated_dataset(self.val_paths)
+            test_dataset = self.load_concatenated_dataset(self.test_paths)
 
-            src_dataset = load_dataset(
-                "text",
-                data_files={"train": src_path},
-                split=f"train[:{self.percentage}%]",
-                features=Features.from_dict({"source": {"dtype": "string", "_type": "Value"}}),
-            )
-
-            trgt_dataset = load_dataset(
-                "text",
-                data_files={"train": trgt_path},
-                split=f"train[:{self.percentage}%]",
-                features=Features.from_dict({"target": {"dtype": "string", "_type": "Value"}}),
-            )
-
-            dataset = concatenate_datasets([src_dataset, trgt_dataset], axis=1)
-
-            del src_dataset, trgt_dataset
-
-            # train/val/test split -> 80/10/10
-            train_test_data = dataset.train_test_split(test_size=0.2, seed=42)
-            test_val_data = train_test_data["test"].train_test_split(test_size=0.5, seed=42)
             dataset = DatasetDict(
                 {
-                    "train": train_test_data["train"],
-                    "val": test_val_data["train"],
-                    "test": test_val_data["test"],
+                    "train": train_dataset,
+                    "val": val_dataset,
+                    "test": test_dataset,
                 }
             )
 
@@ -130,7 +115,7 @@ class WritingPromptsDataModule(LightningDataModule):
 
             self.tokenized_dataset.save_to_disk(self.processed_dataset_path)
 
-            del dataset, train_test_data, test_val_data
+            del dataset, train_dataset, val_dataset, test_dataset
         else:
             self.tokenized_dataset = load_from_disk(self.processed_dataset_path)
 
@@ -146,6 +131,29 @@ class WritingPromptsDataModule(LightningDataModule):
                 "summary_labels",
             ],
         )
+
+    def load_concatenated_dataset(self, dataset_paths):
+        src_path, trgt_path = dataset_paths
+
+        src_dataset = load_dataset(
+            "text",
+            data_files={"_": src_path},
+            split=f"_[:{self.percentage}%]",
+            features=Features.from_dict({"source": {"dtype": "string", "_type": "Value"}}),
+        )
+
+        trgt_dataset = load_dataset(
+            "text",
+            data_files={"_": trgt_path},
+            split=f"_[:{self.percentage}%]",
+            features=Features.from_dict({"target": {"dtype": "string", "_type": "Value"}}),
+        )
+
+        dataset = concatenate_datasets([src_dataset, trgt_dataset], axis=1)
+
+        del src_dataset, trgt_dataset
+
+        return dataset
 
     def train_dataloader(self):
         return DataLoader(
