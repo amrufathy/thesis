@@ -25,6 +25,7 @@ wandb==0.11.0
 black
 isort
 flake8
+vulture
 
 # --------- others --------- #
 jupyterlab

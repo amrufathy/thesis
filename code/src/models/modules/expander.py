@@ -1,12 +1,8 @@
-from typing import Dict, List
+from typing import Dict, List, Union
 
-from sacrebleu import corpus_bleu
-from torch import argmax, cuda, device, exp, nn, tensor
-from torchmetrics.functional import accuracy
-from transformers import BartForConditionalGeneration, BartTokenizerFast
+from torch import exp, nn
+from transformers import BartForConditionalGeneration, BartTokenizerFast, BatchEncoding
 from transformers.models.bart.modeling_bart import shift_tokens_right
-
-from src.utils.model_utils import distinct_n
 
 
 class Expander(nn.Module):
@@ -18,21 +14,22 @@ class Expander(nn.Module):
     ):
         super().__init__()
 
+        self.tokenizer: BartTokenizerFast = (
+            tokenizer if tokenizer is not None else BartTokenizerFast.from_pretrained(model_name_or_path)
+        )
+
         self.expander: BartForConditionalGeneration = BartForConditionalGeneration.from_pretrained(model_name_or_path)
-        self.device = device("cuda") if cuda.is_available() else device("cpu")
+        self.expander.resize_token_embeddings(len(self.tokenizer))
         self.max_generation_length = max_generation_length
 
-        if not tokenizer:
-            self.tokenizer = BartTokenizerFast.from_pretrained(model_name_or_path)
-        else:
-            self.tokenizer = tokenizer
+        self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.pad_token_id)
 
     def forward(self, dict_input: Dict) -> Dict:
         """
         runs the input through expander bart
         input summary -> expander -> generated story
 
-        @param dict_input: contains input_ids, attention_masks, labels for both story and summary
+        @param dict_input: contains input_ids, attention_masks for both story and summary
         """
 
         # shift `decoder ids` to the right
@@ -47,9 +44,9 @@ class Expander(nn.Module):
             "attention_mask": dict_input["summary_attn_msk"],
             "decoder_input_ids": story_ids_shifted,
             "decoder_attention_mask": dict_input["story_attn_msk"],
-            "labels": dict_input["story_labels"],
         }
 
+        # if using Gumbel-Softmax, feed embedding directly
         if "summary_embs" in dict_input:
             feed_dict["inputs_embeds"] = dict_input["summary_embs"]
         else:
@@ -57,78 +54,48 @@ class Expander(nn.Module):
 
         expansion_results = self.expander(**feed_dict, use_cache=False)
 
-        expansion_loss, expansion_logits = (
-            expansion_results.loss,
-            expansion_results.logits,
-        )
+        loss = self.loss_fn(expansion_results.logits.permute(0, 2, 1), dict_input["story_ids"])
 
-        del story_ids_shifted, expansion_results, feed_dict
+        return {"loss": loss, "ppl": exp(loss).detach().item(), "logits": expansion_results.logits.detach()}
 
-        # compute metrics
+    # INFO - generate functions used for inference
 
-        # accuracy
-        generated_story_ids = argmax(expansion_logits, dim=-1)
-        masked_labels = dict_input["story_labels"].detach().clone()
-        masked_labels[masked_labels[:, :] == -100] = self.tokenizer.pad_token_id  # restore padding token id
-        acc = accuracy(generated_story_ids, masked_labels)
-
-        # bleu
-        predictions = self.tokenizer.batch_decode(generated_story_ids, skip_special_tokens=True)
-        references = self.tokenizer.batch_decode(masked_labels, skip_special_tokens=True)
-
-        bleu = corpus_bleu(predictions, [references])
-        bleu_aggr = tensor(bleu.score, device=self.device).detach()
-        bleu1 = tensor(bleu.precisions[0], device=self.device).detach()
-        bleu2 = tensor(bleu.precisions[1], device=self.device).detach()
-        bleu3 = tensor(bleu.precisions[2], device=self.device).detach()
-        bleu4 = tensor(bleu.precisions[3], device=self.device).detach()
-
-        # distinctness
-        distinct1 = tensor(distinct_n(predictions, ngram_size=1), device=self.device).detach()
-        distinct2 = tensor(distinct_n(predictions, ngram_size=2), device=self.device).detach()
-        distinct3 = tensor(distinct_n(predictions, ngram_size=3), device=self.device).detach()
-        distinct4 = tensor(distinct_n(predictions, ngram_size=4), device=self.device).detach()
-
-        # perplexity
-        perplexity = exp(expansion_loss).detach()
-
-        del generated_story_ids, masked_labels, predictions, references
-
-        return {
-            "loss": expansion_loss,
-            "logits": expansion_logits.detach(),
-            "accuracy": acc.detach(),
-            "bleu": bleu_aggr,
-            "bleu1": bleu1,
-            "bleu2": bleu2,
-            "bleu3": bleu3,
-            "bleu4": bleu4,
-            "ppl": perplexity,
-            "distinct1": distinct1,
-            "distinct2": distinct2,
-            "distinct3": distinct3,
-            "distinct4": distinct4,
-        }
-
-    def generate(self, conditioning_sentences: List[str]) -> List[str]:
+    def generate_from_text(self, conditioning_sentences: List[str]) -> List[str]:
         """
-        Generate stories depending on conditional input summaries
+        Generate stories depending on conditional text input summaries
         """
 
-        tokenized_sentences = self.tokenizer(conditioning_sentences, padding="longest", return_tensors="pt")
+        conditioning_sentences = self.tokenizer(conditioning_sentences, padding="longest", return_tensors="pt")
+        return self.generate_from_ids(conditioning_sentences)
+
+    def generate_from_ids(self, conditioning_sentences: Union[Dict, BatchEncoding]) -> List[str]:
+        """
+        Generate stories depending on conditional tokenized input summaries
+        """
+
         generated_ids = self.expander.generate(
-            **tokenized_sentences,
+            **conditioning_sentences,
             num_beams=5,
             do_sample=True,
             early_stopping=False,
+            top_k=50,
             top_p=0.9,
-            min_length=self.max_generation_length // 2,
             max_length=self.max_generation_length,
-            length_penalty=1.5
         )
-        generated_stories = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
-        return generated_stories
+        return self.ids_to_clean_text(generated_ids)
 
-    def get_embeddings(self):
+    def ids_to_clean_text(self, generated_ids) -> List[str]:
+        generated_text = self.tokenizer.batch_decode(
+            generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
+        )
+
+        return list(map(str.strip, generated_text))
+
+    @property
+    def input_embeddings(self):
         return self.expander.get_input_embeddings().weight
+
+    @property
+    def pad_token_id(self) -> int:
+        return self.tokenizer.pad_token_id

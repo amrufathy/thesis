@@ -7,3 +7,5 @@ direction: 'comp'  # direction to run the cycle (specified by reconstruction ope
 use_gumbel_softmax: False  # whether to apply Gumbel-Softmax trick to sample intermediate output
 expander_learning_rate: 5e-5
 compressor_learning_rate: 5e-5
+max_story_length: ${datamodule.max_story_length}  # max length to use when generating stories
+max_summary_length: ${datamodule.max_summary_length}  # max length to use when generating summaries

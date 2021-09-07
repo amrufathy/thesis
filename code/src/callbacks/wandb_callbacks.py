@@ -1,10 +1,14 @@
 import glob
 import os
+from typing import Union
 
 import wandb
 from datasets import load_from_disk
 from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.loggers import LoggerCollection, WandbLogger
+
+from src.models import CompressorModel, CycleModel, ExpanderModel
+from src.models.modules import Compressor, CycleArchitectureExpand
 
 
 def get_wandb_logger(trainer: Trainer) -> WandbLogger:
@@ -85,51 +89,36 @@ class TextGenerationCallback(Callback):
         self.data_dir = data_dir
         self.limit = limit
 
-    def on_fit_end(self, trainer, pl_module):
+    def on_fit_end(self, trainer, pl_module: Union[ExpanderModel, CompressorModel, CycleModel]):
         dataset = load_from_disk(self.data_dir)["val"]  # use only val data
-        tokenizer = pl_module.tokenizer()
+        model = pl_module.arch
 
         if self.limit == -1:  # no limit
             self.limit = dataset["summary_ids"].size(0)
 
-        gold_stories = tokenizer.batch_decode(
-            dataset["story_ids"][: self.limit],
-            skip_special_tokens=True,
-        )
-        gold_summaries = tokenizer.batch_decode(
-            dataset["summary_ids"][: self.limit],
-            skip_special_tokens=True,
-        )
+        dataset = dataset[: self.limit]
 
-        del dataset
+        gold_stories = model.ids_to_clean_text(dataset["story_ids"])
+        gold_summaries = model.ids_to_clean_text(dataset["summary_ids"])
 
-        if "Compressor" in str(pl_module.__class__) or "Expander" in str(pl_module.__class__):
-            # if compressor/expander: generate one-way predictions
-            if "Compressor" in str(pl_module.__class__):
-                predictions = pl_module.generate(gold_stories)
-            else:  # Expander
-                predictions = pl_module.generate(gold_summaries)
+        if isinstance(model, (Compressor, CycleArchitectureExpand)):
+            predictions = model.generate_from_text(gold_stories)
+        else:  # (Expander, CycleArchitectureCompress, CycleArchitectureDual)
+            predictions = model.generate_from_text(gold_summaries)
 
-            # write to w&b table
-            table = wandb.Table(columns=["gold_story", "gold_summary", "prediction"])
-            for p, st, sm in zip(predictions, gold_stories, gold_summaries):
-                table.add_data(st, sm, p)
+        if not isinstance(predictions[0], list):
+            predictions = [predictions]
 
-            del predictions
-
-        else:
-            # if cycle: generate two-way predictions
-            predicted_stories, predicted_summaries = pl_module.generate(gold_summaries)
-
-            # write to w&b table
+        if isinstance(pl_module, CycleModel):
             table = wandb.Table(columns=["gold_story", "gold_summary", "predicted_stories", "predicted_summaries"])
-            for st, sm, pst, psm in zip(gold_stories, gold_summaries, predicted_stories, predicted_summaries):
-                table.add_data(st, sm, pst, psm)
+        else:
+            table = wandb.Table(columns=["gold_story", "gold_summary", "prediction"])
 
-            del predicted_stories, predicted_summaries
+        for st, sm, pred in zip(gold_stories, gold_summaries, zip(*predictions)):
+            table.add_data(st, sm, *pred)
 
         # fmt: off
         wandb.log({"generations": table})
         # fmt: on
 
-        del gold_stories, gold_summaries, table
+        del gold_stories, gold_summaries, predictions, table

@@ -1,9 +1,7 @@
-from typing import Dict, List
+from typing import Dict, List, Union
 
-from sacrebleu import corpus_bleu
-from torch import argmax, cuda, device, nn, tensor
-from torchmetrics.functional import accuracy
-from transformers import BartForConditionalGeneration, BartTokenizerFast
+from torch import nn
+from transformers import BartForConditionalGeneration, BartTokenizerFast, BatchEncoding
 from transformers.models.bart.modeling_bart import shift_tokens_right
 
 
@@ -16,21 +14,22 @@ class Compressor(nn.Module):
     ):
         super().__init__()
 
+        self.tokenizer: BartTokenizerFast = (
+            tokenizer if tokenizer is not None else BartTokenizerFast.from_pretrained(model_name_or_path)
+        )
+
         self.compressor: BartForConditionalGeneration = BartForConditionalGeneration.from_pretrained(model_name_or_path)
-        self.device = device("cuda") if cuda.is_available() else device("cpu")
+        self.compressor.resize_token_embeddings(len(self.tokenizer))
         self.max_generation_length = max_generation_length
 
-        if not tokenizer:
-            self.tokenizer = BartTokenizerFast.from_pretrained(model_name_or_path)
-        else:
-            self.tokenizer = tokenizer
+        self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.pad_token_id)
 
     def forward(self, dict_input: Dict) -> Dict:
         """
         runs the input through compressor bart
         input story -> compressor -> generated summary
 
-        @param dict_input: contains input_ids, attention_masks, labels for both story and summary
+        @param dict_input: contains input_ids, attention_masks for both story and summary
         """
 
         # shift `decoder ids` to the right
@@ -42,12 +41,12 @@ class Compressor(nn.Module):
 
         # feed the model
         feed_dict = {
-            "attention_mask": dict_input["story_attn_msk"],  # TODO: check if right in case of used within cycle
+            "attention_mask": dict_input["story_attn_msk"],
             "decoder_input_ids": summary_ids_shifted,
             "decoder_attention_mask": dict_input["summary_attn_msk"],
-            "labels": dict_input["summary_labels"],
         }
 
+        # if using Gumbel-Softmax, feed embedding directly
         if "story_embs" in dict_input:
             feed_dict["inputs_embeds"] = dict_input["story_embs"]
         else:
@@ -55,53 +54,48 @@ class Compressor(nn.Module):
 
         compression_results = self.compressor(**feed_dict, use_cache=False)
 
-        compression_loss, compression_logits = (
-            compression_results.loss,
-            compression_results.logits,
-        )
+        loss = self.loss_fn(compression_results.logits.permute(0, 2, 1), dict_input["summary_ids"])
 
-        del summary_ids_shifted, compression_results, feed_dict
+        return {"loss": loss, "logits": compression_results.logits.detach()}
 
-        # compute metrics
+    # INFO - generate functions used for inference
 
-        # accuracy
-        generated_summary_ids = argmax(compression_logits, dim=-1)
-        masked_labels = dict_input["summary_labels"].detach().clone()
-        masked_labels[masked_labels[:, :] == -100] = self.tokenizer.pad_token_id  # restore padding token id
-        acc = accuracy(generated_summary_ids, masked_labels)
-
-        # bleu
-        predictions = self.tokenizer.batch_decode(generated_summary_ids, skip_special_tokens=True)
-        references = self.tokenizer.batch_decode(masked_labels, skip_special_tokens=True)
-
-        bleu = corpus_bleu(predictions, [references])
-
-        del generated_summary_ids, masked_labels, predictions, references
-
-        return {
-            "loss": compression_loss,
-            "logits": compression_logits.detach(),
-            "accuracy": acc.detach(),
-            "bleu": tensor(bleu.score, device=self.device).detach(),
-        }
-
-    def generate(self, conditioning_sentences: List[str]) -> List[str]:
+    def generate_from_text(self, conditioning_sentences: List[str]) -> List[str]:
         """
-        Generate summaries depending on conditional input stories
+        Generate summaries depending on conditional text input stories
         """
 
-        tokenized_sentences = self.tokenizer(conditioning_sentences, padding="longest", return_tensors="pt")
+        conditioning_sentences = self.tokenizer(conditioning_sentences, padding="longest", return_tensors="pt")
+        return self.generate_from_ids(conditioning_sentences)
+
+    def generate_from_ids(self, conditioning_sentences: Union[Dict, BatchEncoding]) -> List[str]:
+        """
+        Generate summaries depending on conditional text input stories
+        """
+
         generated_ids = self.compressor.generate(
-            **tokenized_sentences,
+            **conditioning_sentences,
             num_beams=5,
             do_sample=True,
             early_stopping=False,
-            min_length=2,
+            top_k=50,
+            top_p=0.9,
             max_length=self.max_generation_length
         )
-        generated_summaries = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
-        return generated_summaries
+        return self.ids_to_clean_text(generated_ids)
 
-    def get_embeddings(self):
+    def ids_to_clean_text(self, generated_ids) -> List[str]:
+        generated_text = self.tokenizer.batch_decode(
+            generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
+        )
+
+        return list(map(str.strip, generated_text))
+
+    @property
+    def input_embeddings(self):
         return self.compressor.get_input_embeddings().weight
+
+    @property
+    def pad_token_id(self) -> int:
+        return self.tokenizer.pad_token_id

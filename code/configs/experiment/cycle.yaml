@@ -23,7 +23,7 @@ trainer:
   # batch size of compressor / batch size of cycle
 
 model:
-  direction: 'dual'
+  direction: "dual"
   use_gumbel_softmax: False
 
 datamodule:

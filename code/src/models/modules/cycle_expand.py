@@ -1,6 +1,6 @@
 from typing import Dict, List, Tuple
 
-from torch import argmax, cuda, device, mean, nn, tensor
+from torch import argmax, nn
 from transformers import BartTokenizerFast
 
 from src.models.modules import Compressor, Expander
@@ -13,101 +13,89 @@ class CycleArchitectureExpand(nn.Module):
         expander_model_name: str,
         compressor_model_name: str,
         use_gumbel_softmax: bool = False,
+        max_story_length: int = 70,
+        max_summary_length: int = 7,
     ):
         super().__init__()
 
         assert expander_model_name == compressor_model_name
 
         self.tokenizer = BartTokenizerFast.from_pretrained(expander_model_name)
-        self.compressor = Compressor(model_name_or_path=compressor_model_name, tokenizer=self.tokenizer)
-        self.expander = Expander(model_name_or_path=expander_model_name, tokenizer=self.tokenizer)
-        self.device = device("cuda") if cuda.is_available() else device("cpu")
+        self.compressor = Compressor(
+            model_name_or_path=compressor_model_name, tokenizer=self.tokenizer, max_generation_length=max_summary_length
+        )
+        self.expander = Expander(
+            model_name_or_path=expander_model_name, tokenizer=self.tokenizer, max_generation_length=max_story_length
+        )
         self.use_gumbel_softmax = use_gumbel_softmax
+
+        self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.expander.pad_token_id)
 
     def forward(self, dict_input: Dict) -> Dict:
         """
         runs the input through the whole cycle
         input -> compressor -> intermediate output -> expander -> reconstructed input
 
-        @param dict_input: contains input_ids, attention_masks, labels for both story and summary
+        @param dict_input: contains input_ids, attention_masks for both story and summary
         """
 
         # INFO - Step 1: Compression (Story -> Generated Summary)
         compression_results = self.compressor(dict_input)
-        compression_loss, compression_logits, compression_accuracy, compression_bleu = (
+        compression_loss, compression_logits = (
             compression_results["loss"],
             compression_results["logits"],
-            compression_results["accuracy"],
-            compression_results["bleu"],
         )
 
         # INFO: if using gumbel then the whole cycle is differentiable
         #  if not using gumbel then dual learning technique
         if self.use_gumbel_softmax:
-            embs = get_gumbel_sampled_embeddings(compression_logits, self.expander.get_embeddings())
+            embs = get_gumbel_sampled_embeddings(compression_logits, self.expander.input_embeddings)
 
             # pass generated summary embeddings to compressor
             dict_input["summary_embs"] = embs
-
-            del embs
         else:
             generated_summary_ids = argmax(compression_logits, dim=-1)
 
-            # overwrite dict_input['summary_ids'] (original summary ids) with generated_summary_ids
+            # overwrite original summary ids with `generated_summary_ids`
             dict_input["summary_ids"] = generated_summary_ids
-
-            del generated_summary_ids
-
-        del compression_results
 
         # INFO - Step 2: Expansion (Generated Summary -> Reconstructed Story)
         expansion_results = self.expander(dict_input)
-        expansion_loss, expansion_logits, expansion_accuracy, expansion_bleu = (
+        expansion_loss, expansion_logits, expansion_ppl = (
             expansion_results["loss"],
             expansion_results["logits"],
-            expansion_results["accuracy"],
-            expansion_results["bleu"],
+            expansion_results["ppl"],
         )
 
         # INFO - Step 3: Calculate Aggregated Metrics
         total_loss = expansion_loss + compression_loss
-        aggr_accuracy = mean(tensor([expansion_accuracy, compression_accuracy], device=self.device))
-        aggr_bleu = mean(tensor([expansion_bleu, compression_bleu], device=self.device))
-
-        # del expansion_results
 
         return {
             # losses
             "loss": total_loss,
             "exp_loss": expansion_loss,
             "comp_loss": compression_loss,
-            # accuracy
-            "acc": aggr_accuracy.detach(),
-            "exp_acc": expansion_accuracy,
-            "comp_acc": compression_accuracy,
-            # bleu
-            "bleu": aggr_bleu.detach(),
-            "exp_bleu": expansion_bleu,
-            "comp_bleu": compression_bleu,
-            # extra exp metric
-            "exp_bleu1": expansion_results["bleu1"],
-            "exp_bleu2": expansion_results["bleu2"],
-            "exp_bleu3": expansion_results["bleu3"],
-            "exp_bleu4": expansion_results["bleu4"],
-            "exp_ppl": expansion_results["ppl"],
-            "exp_dstnct1": expansion_results["distinct1"],
-            "exp_dstnct2": expansion_results["distinct2"],
-            "exp_dstnct3": expansion_results["distinct3"],
-            "exp_dstnct4": expansion_results["distinct4"],
+            # logits
+            "exp_logits": expansion_logits,
+            "comp_logits": compression_logits,
+            # perplexity
+            "exp_ppl": expansion_ppl,
         }
 
-    def generate(self, conditioning_sentences: List[str]) -> Tuple[List[str], List[str]]:
+    def generate_from_text(self, conditioning_sentences: List[str]) -> Tuple[List[str], List[str]]:
         """
         Generate intermediate summaries and reconstructed stories based on
-            conditional input stories
+            conditional text input stories
         """
 
-        generated_summaries = self.compressor.generate(conditioning_sentences)
-        reconstructed_stories = self.expander.generate(generated_summaries)
+        generated_summaries = self.compressor.generate_from_text(conditioning_sentences)
+        reconstructed_stories = self.expander.generate_from_text(generated_summaries)
 
         return reconstructed_stories, generated_summaries
+
+    def ids_to_clean_text(self, generated_ids) -> List[str]:
+        generated_text = self.tokenizer.batch_decode(
+            generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
+        )
+
+        return list(map(str.strip, generated_text))

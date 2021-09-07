@@ -1,6 +1,6 @@
 from typing import Dict, List, Tuple
 
-from torch import argmax, cuda, device, mean, nn, tensor
+from torch import argmax, mean, nn, stack, tensor
 from transformers import BartTokenizerFast
 
 from src.models.modules import Compressor, Expander
@@ -13,16 +13,23 @@ class CycleArchitectureDual(nn.Module):
         expander_model_name: str,
         compressor_model_name: str,
         use_gumbel_softmax: bool = False,
+        max_story_length: int = 70,
+        max_summary_length: int = 7,
     ):
         super().__init__()
 
         assert expander_model_name == compressor_model_name
 
         self.tokenizer = BartTokenizerFast.from_pretrained(expander_model_name)
-        self.expander = Expander(model_name_or_path=expander_model_name, tokenizer=self.tokenizer)
-        self.compressor = Compressor(model_name_or_path=compressor_model_name, tokenizer=self.tokenizer)
-        self.device = device("cuda") if cuda.is_available() else device("cpu")
+        self.expander = Expander(
+            model_name_or_path=expander_model_name, tokenizer=self.tokenizer, max_generation_length=max_story_length
+        )
+        self.compressor = Compressor(
+            model_name_or_path=compressor_model_name, tokenizer=self.tokenizer, max_generation_length=max_summary_length
+        )
         self.use_gumbel_softmax = use_gumbel_softmax
+
+        self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.expander.pad_token_id)
 
     def forward(self, dict_input: Dict) -> Dict:
         """
@@ -31,7 +38,7 @@ class CycleArchitectureDual(nn.Module):
         1) input -> expander -> intermediate output -> compressor -> reconstructed input
         2) input -> compressor -> intermediate output -> expander -> reconstructed input
 
-        @param dict_input: contains input_ids, attention_masks, labels for both story and summary
+        @param dict_input: contains input_ids, attention_masks for both story and summary
         """
 
         # ==============================================
@@ -44,40 +51,31 @@ class CycleArchitectureDual(nn.Module):
 
         # INFO - Step 1: Expansion (Summary -> Generated Story)
         expansion_results_1 = self.expander(dict_input)
-        expansion_loss_1, expansion_logits_1, expansion_accuracy_1, expansion_bleu_1 = (
+        expansion_loss_1, expansion_logits_1, expansion_ppl_1 = (
             expansion_results_1["loss"],
             expansion_results_1["logits"],
-            expansion_results_1["accuracy"],
-            expansion_results_1["bleu"],
+            expansion_results_1["ppl"],
         )
 
         if self.use_gumbel_softmax:
-            embs = get_gumbel_sampled_embeddings(expansion_logits_1, self.compressor.get_embeddings())
+            embs = get_gumbel_sampled_embeddings(expansion_logits_1, self.compressor.input_embeddings)
 
             # pass generated story embeddings to compressor
             dict_input["story_embs"] = embs
-
-            del embs
         else:
             generated_story_ids = argmax(expansion_logits_1, dim=-1)
 
-            # overwrite dict_input['story_ids'] (original story ids) with generated_story_ids
+            # overwrite original story ids with `generated_story_ids`
             dict_input["story_ids"] = generated_story_ids
 
-            del generated_story_ids
-
-        # del expansion_results_1
-
         # INFO - Step 2: Compression (Generated Story -> Reconstructed Summary)
-        compression_results = self.compressor(dict_input)
-        compression_loss_1, compression_logits_1, compression_accuracy_1, compression_bleu_1 = (
-            compression_results["loss"],
-            compression_results["logits"],
-            compression_results["accuracy"],
-            compression_results["bleu"],
+        compression_results_1 = self.compressor(dict_input)
+        compression_loss_1, compression_logits_1 = (
+            compression_results_1["loss"],
+            compression_results_1["logits"],
         )
 
-        del compression_results
+        del expansion_results_1, compression_results_1
 
         # restore dict_input
         dict_input["story_ids"] = original_input["story_ids"]
@@ -91,12 +89,10 @@ class CycleArchitectureDual(nn.Module):
         # ==============================================
 
         # INFO - Step 1: Compression (Story -> Generated Summary)
-        compression_results = self.compressor(dict_input)
-        compression_loss_2, compression_logits_2, compression_accuracy_2, compression_bleu_2 = (
-            compression_results["loss"],
-            compression_results["logits"],
-            compression_results["accuracy"],
-            compression_results["bleu"],
+        compression_results_2 = self.compressor(dict_input)
+        compression_loss_2, compression_logits_2 = (
+            compression_results_2["loss"],
+            compression_results_2["logits"],
         )
 
         if self.use_gumbel_softmax:
@@ -104,28 +100,21 @@ class CycleArchitectureDual(nn.Module):
 
             # pass generated summary embeddings to compressor
             dict_input["summary_embs"] = embs
-
-            del embs
         else:
             generated_summary_ids = argmax(compression_logits_2, dim=-1)
 
-            # overwrite dict_input['summary_ids'] (original summary ids) with generated_summary_ids
+            # overwrite original summary ids with `generated_summary_ids`
             dict_input["summary_ids"] = generated_summary_ids
-
-            del generated_summary_ids
-
-        del compression_results
 
         # INFO - Step 2: Expansion (Generated Summary -> Reconstructed Story)
         expansion_results_2 = self.expander(dict_input)
-        expansion_loss_2, expansion_logits_2, expansion_accuracy_2, expansion_bleu_2 = (
+        expansion_loss_2, expansion_logits_2, expansion_ppl_2 = (
             expansion_results_2["loss"],
             expansion_results_2["logits"],
-            expansion_results_2["accuracy"],
-            expansion_results_2["bleu"],
+            expansion_results_2["ppl"],
         )
 
-        # del expansion_results_2
+        del compression_results_2, expansion_results_2
 
         # ==============================================
         # ==============================================
@@ -133,70 +122,43 @@ class CycleArchitectureDual(nn.Module):
         # ==============================================
         # ==============================================
 
-        expansion_loss = expansion_loss_1 + expansion_loss_2
-        expansion_bleu = mean(tensor([expansion_bleu_1, expansion_bleu_2], device=self.device))
-        expansion_accuracy = mean(tensor([expansion_accuracy_1, expansion_accuracy_2], device=self.device))
+        # TODO: check loss and logits computation
+        expansion_loss = mean(tensor([expansion_loss_1, expansion_loss_2]))
+        expansion_ppl = mean(tensor([expansion_ppl_1, expansion_ppl_2]))
 
-        compression_loss = compression_loss_1 + compression_loss_2
-        compression_bleu = mean(tensor([compression_bleu_1, compression_bleu_2], device=self.device))
-        compression_accuracy = mean(tensor([compression_accuracy_1, compression_accuracy_2], device=self.device))
+        compression_loss = mean(tensor([compression_loss_1, compression_loss_2]))
 
         total_loss = expansion_loss + compression_loss
-        aggr_accuracy = mean(tensor([expansion_accuracy, compression_accuracy], device=self.device))
-        aggr_bleu = mean(tensor([expansion_bleu, compression_bleu], device=self.device))
 
-        exp_bleu1 = mean(tensor([expansion_results_1["bleu1"], expansion_results_2["bleu1"]], device=self.device))
-        exp_bleu2 = mean(tensor([expansion_results_1["bleu2"], expansion_results_2["bleu2"]], device=self.device))
-        exp_bleu3 = mean(tensor([expansion_results_1["bleu3"], expansion_results_2["bleu3"]], device=self.device))
-        exp_bleu4 = mean(tensor([expansion_results_1["bleu4"], expansion_results_2["bleu4"]], device=self.device))
-
-        exp_dstnct1 = mean(
-            tensor([expansion_results_1["distinct1"], expansion_results_2["distinct1"]], device=self.device)
-        )
-        exp_dstnct2 = mean(
-            tensor([expansion_results_1["distinct2"], expansion_results_2["distinct2"]], device=self.device)
-        )
-        exp_dstnct3 = mean(
-            tensor([expansion_results_1["distinct3"], expansion_results_2["distinct3"]], device=self.device)
-        )
-        exp_dstnct4 = mean(
-            tensor([expansion_results_1["distinct4"], expansion_results_2["distinct4"]], device=self.device)
-        )
-
-        exp_ppl = mean(tensor([expansion_results_1["ppl"], expansion_results_2["ppl"]], device=self.device))
+        expansion_logits = mean(stack([expansion_logits_1, expansion_logits_2], dim=-1), dim=-1)
+        compression_logits = mean(stack([compression_logits_1, compression_logits_2], dim=-1), dim=-1)
 
         return {
             # losses
             "loss": total_loss,
             "exp_loss": expansion_loss,
             "comp_loss": compression_loss,
-            # accuracy
-            "acc": aggr_accuracy.detach(),
-            "exp_acc": expansion_accuracy.detach(),
-            "comp_acc": compression_accuracy.detach(),
-            # bleu
-            "bleu": aggr_bleu.detach(),
-            "exp_bleu": expansion_bleu.detach(),
-            "comp_bleu": compression_bleu.detach(),
+            # logits
+            "exp_logits": expansion_logits,
+            "comp_logits": compression_logits,
             # extra exp metric
-            "exp_bleu1": exp_bleu1.detach(),
-            "exp_bleu2": exp_bleu2.detach(),
-            "exp_bleu3": exp_bleu3.detach(),
-            "exp_bleu4": exp_bleu4.detach(),
-            "exp_ppl": exp_ppl.detach(),
-            "exp_dstnct1": exp_dstnct1.detach(),
-            "exp_dstnct2": exp_dstnct2.detach(),
-            "exp_dstnct3": exp_dstnct3.detach(),
-            "exp_dstnct4": exp_dstnct4.detach(),
+            "exp_ppl": expansion_ppl.detach().item(),
         }
 
-    def generate(self, conditioning_sentences: List[str]) -> Tuple[List[str], List[str]]:
+    def generate_from_text(self, conditioning_sentences: List[str]) -> Tuple[List[str], List[str]]:
         """
         Generate intermediate stories and reconstructed summaries based on
-            conditional input summaries
+            conditional text input summaries
         """
 
-        generated_stories = self.expander.generate(conditioning_sentences)
-        reconstructed_summaries = self.compressor.generate(generated_stories)
+        generated_stories = self.expander.generate_from_text(conditioning_sentences)
+        reconstructed_summaries = self.compressor.generate_from_text(generated_stories)
 
         return generated_stories, reconstructed_summaries
+
+    def ids_to_clean_text(self, generated_ids) -> List[str]:
+        generated_text = self.tokenizer.batch_decode(
+            generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
+        )
+
+        return list(map(str.strip, generated_text))

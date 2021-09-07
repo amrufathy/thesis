@@ -79,19 +79,11 @@ class WritingPromptsDataModule(LightningDataModule):
             max_length=self.max_summary_length,
         )
 
-        story_labels = torch.tensor(story_embeddings["input_ids"])
-        summary_labels = torch.tensor(summary_embeddings["input_ids"])
-
-        story_labels[story_labels[:, :] == self.tokenizer.pad_token_id] = -100
-        summary_labels[summary_labels[:, :] == self.tokenizer.pad_token_id] = -100
-
         return {
             "story_ids": story_embeddings["input_ids"],
             "story_attn_msk": story_embeddings["attention_mask"],
-            "story_labels": story_labels.tolist(),
             "summary_ids": summary_embeddings["input_ids"],
             "summary_attn_msk": summary_embeddings["attention_mask"],
-            "summary_labels": summary_labels.tolist(),
         }
 
     def setup(self, *args, **kwargs):
@@ -125,10 +117,8 @@ class WritingPromptsDataModule(LightningDataModule):
             columns=[
                 "story_ids",
                 "story_attn_msk",
-                "story_labels",
                 "summary_ids",
                 "summary_attn_msk",
-                "summary_labels",
             ],
         )
 

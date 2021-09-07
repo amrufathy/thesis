@@ -1,17 +1,13 @@
 import dotenv
 import hydra
+import nltk
 from omegaconf import DictConfig
-
-# from torch.multiprocessing import set_start_method
-#
-# try:
-#     set_start_method('spawn')
-# except RuntimeError:
-#     print("Could not use `spawn` start method")
 
 # load environment variables from `.env` file if it exists
 # recursively searches for `.env` in all folders starting from work dir
 dotenv.load_dotenv(override=True)
+
+nltk.download("punkt")
 
 
 @hydra.main(config_path="configs/", config_name="config.yaml")
