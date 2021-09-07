@@ -1,3 +1,7 @@
+import sys  # isort:skip
+
+# sys.path.append("/content/")
+
 from typing import Optional
 
 import dotenv
@@ -6,6 +10,7 @@ import nltk
 import pandas as pd
 from omegaconf import DictConfig
 from pytorch_lightning import LightningDataModule, seed_everything
+from tqdm import tqdm
 
 from src.models import CycleModel, ExpanderModel
 from src.utils import utils
@@ -59,17 +64,23 @@ def compare_outputs(config: DictConfig):
         columns=["Gold story", "[P] Expander", "BLEU Exp", "[P] C-Exp", "BLEU C-Exp", "[P] C-Comp", "BLEU C-Comp"]
     )
 
-    for i, batch in enumerate(datamodule.test_dataloader()):
-        gold_summary = model_exp.arch.ids_to_clean_text(batch["summary_ids"])[0]
-        gold_story = model_exp.arch.ids_to_clean_text(batch["story_ids"])[0]
+    batch = next(iter(datamodule.test_dataloader()))
 
-        pred_story_exp = model_exp.arch.generate_from_text(gold_summary)[0]
-        pred_story_c_exp = model_cycle_exp.arch.expander.generate_from_text(gold_summary)[0]
-        pred_story_c_comp = model_cycle_comp.arch.expander.generate_from_text(gold_summary)[0]
+    gold_summaries = model_exp.arch.ids_to_clean_text(batch["summary_ids"])
+    gold_stories = model_exp.arch.ids_to_clean_text(batch["story_ids"])
 
-        bleu_exp = bleu(gold_summary, pred_story_exp)
-        bleu_c_exp = bleu(gold_summary, pred_story_c_exp)
-        bleu_c_comp = bleu(gold_summary, pred_story_c_comp)
+    pred_stories_exp = model_exp.arch.generate_from_text(gold_summaries)
+    pred_stories_c_exp = model_cycle_exp.arch.expander.generate_from_text(gold_summaries)
+    pred_stories_c_comp = model_cycle_comp.arch.expander.generate_from_text(gold_summaries)
+
+    for i, (gold_summary, gold_story, pred_story_exp, pred_story_c_exp, pred_story_c_comp) in tqdm(
+        enumerate(zip(gold_summaries, gold_stories, pred_stories_exp, pred_stories_c_exp, pred_stories_c_comp)),
+        total=len(gold_summaries),
+    ):
+
+        bleu_exp = bleu([gold_story], [pred_story_exp])
+        bleu_c_exp = bleu([gold_story], [pred_story_c_exp])
+        bleu_c_comp = bleu([gold_story], [pred_story_c_comp])
 
         df = df.append(
             {
@@ -88,7 +99,7 @@ def compare_outputs(config: DictConfig):
             break
 
     log.info("Writing csv file")
-    df.to_csv('stories_comparison.csv', index=False)
+    df.to_csv("stories_comparison.csv", index=False)
 
 
 @hydra.main(config_path="../../configs/", config_name="config.yaml")
