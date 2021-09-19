@@ -80,6 +80,7 @@ class Expander(nn.Module):
             early_stopping=False,
             top_k=50,
             top_p=0.9,
+            temperature=1.0,  # default 1.0
             max_length=self.max_generation_length,
         )
 

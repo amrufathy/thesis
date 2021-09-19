@@ -8,6 +8,7 @@ import dotenv
 import hydra
 import nltk
 import pandas as pd
+from datasets import load_metric
 from omegaconf import DictConfig
 from pytorch_lightning import LightningDataModule, seed_everything
 from tqdm import tqdm
@@ -25,6 +26,8 @@ nltk.download("punkt")
 log = utils.get_logger(__name__)
 
 LIMIT = 100
+
+hf_bleurt = load_metric("bleurt")
 
 
 def compare_outputs(config: DictConfig):
@@ -61,9 +64,22 @@ def compare_outputs(config: DictConfig):
     log.info("Starting testing!")
 
     df = pd.DataFrame(
-        columns=["Gold story", "[P] Expander", "BLEU Exp", "[P] C-Exp", "BLEU C-Exp", "[P] C-Comp", "BLEU C-Comp"]
+        columns=[
+            "Gold summary",
+            "Gold story",
+            "[P] Expander",
+            "BLEU Exp",
+            "BLEURT Exp",
+            "[P] C-Exp",
+            "BLEU C-Exp",
+            "BLEURT C-Exp",
+            "[P] C-Comp",
+            "BLEU C-Comp",
+            "BLEURT C-Comp",
+        ]
     )
 
+    # TODO: set batch size in config to appropriate size (~100)
     batch = next(iter(datamodule.test_dataloader()))
 
     gold_summaries = model_exp.arch.ids_to_clean_text(batch["summary_ids"])
@@ -82,15 +98,23 @@ def compare_outputs(config: DictConfig):
         bleu_c_exp = bleu([gold_story], [pred_story_c_exp])
         bleu_c_comp = bleu([gold_story], [pred_story_c_comp])
 
+        bleurt_exp = hf_bleurt.compute(references=[gold_story], predictions=[pred_story_exp])["scores"][0]
+        bleurt_c_exp = hf_bleurt.compute(references=[gold_story], predictions=[pred_story_c_exp])["scores"][0]
+        bleurt_c_comp = hf_bleurt.compute(references=[gold_story], predictions=[pred_story_c_comp])["scores"][0]
+
         df = df.append(
             {
+                "Gold summary": gold_summary,
                 "Gold story": gold_story,
                 "[P] Expander": pred_story_exp,
-                "BLEU Exp": bleu_exp["bleu"],
+                "BLEU Exp": bleu_exp["bleu2"],
+                "BLEURT Exp": bleurt_exp,
                 "[P] C-Exp": pred_story_c_exp,
-                "BLEU C-Exp": bleu_c_exp["bleu"],
+                "BLEU C-Exp": bleu_c_exp["bleu2"],
+                "BLEURT C-Exp": bleurt_c_exp,
                 "[P] C-Comp": pred_story_c_comp,
-                "BLEU C-Comp": bleu_c_comp["bleu"],
+                "BLEU C-Comp": bleu_c_comp["bleu2"],
+                "BLEURT C-Comp": bleurt_c_comp,
             },
             ignore_index=True,
         )

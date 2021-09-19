@@ -1,4 +1,4 @@
-_target_: src.datamodules.rocstories_one_sentence_datamodule.ROCStoriesOneSentenceDataModule
+_target_: src.datamodules.roc.ROCStoriesDataModule
 
 data_dir: ${data_dir}  # data_dir is specified in config.yaml
 batch_size: 32
@@ -6,9 +6,9 @@ percentage: 100  # percentage of dataset to load
 shuffle: True  # `True` shuffles dataset every epoch
 padding: 'max_length'  # padding strategy (check `Tokenizers` documentation)
 truncation: True  # truncation strategy (check `Tokenizers` documentation)
-max_story_length: 60  # max story length in tokens
-max_summary_length: 20  # max summary length in tokens
+max_story_length: 70  # max story length in tokens
+max_summary_length: 7  # max summary length in tokens
 load_dataset_from_file: True
 train_files: [ 'ROCStories_spring2016.csv', 'ROCStories_winter2017.csv' ]
 # val_files: [ 'cloze_test_val_spring2016.csv', 'cloze_test_val_winter2018.csv' ]
-processed_data_dir: '${data_dir}/.processed_rocstories_onesent'
+processed_data_dir: '${data_dir}/.processed_rocstories'

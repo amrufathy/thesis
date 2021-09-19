@@ -1,7 +1,7 @@
 from typing import Dict, List, Union
 
 from pytorch_lightning import LightningModule
-from torch import argmax
+from torch import argmax, tensor
 from transformers import BartTokenizerFast
 from transformers.optimization import AdamW
 
@@ -58,6 +58,9 @@ class ExpanderModel(LightningModule):
         targets = self.arch.ids_to_clean_text(batch["story_ids"])
 
         metrics = {**bleu(targets, predictions), **distinct_n(predictions)}
+
+        for k, v in metrics.items():
+            metrics[k] = tensor(v, device=self.device)
 
         self.log_at_val_test_epoch_end(metrics, "val")
 

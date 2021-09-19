@@ -6,7 +6,7 @@
 defaults:
   - override /trainer: minimal.yaml  # override trainer to null so it's not loaded from main config defaults...
   - override /model: compressor.yaml
-  - override /datamodule: rocstories.yaml
+  - override /datamodule: prompts_sent.yaml
   - override /callbacks: wandb.yaml  # choose callbacks from 'configs/callbacks/'
   - override /logger: wandb.yaml
 

@@ -1,7 +1,7 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 from pytorch_lightning import LightningModule
-from torch import argmax
+from torch import argmax, tensor
 from transformers import BartTokenizerFast
 from transformers.optimization import AdamW
 
@@ -55,6 +55,9 @@ class CompressorModel(LightningModule):
         metrics = {
             "bleu": bleu(targets, predictions)["bleu"],
         }
+
+        for k, v in metrics.items():
+            metrics[k] = tensor(v, device=self.device)
 
         self.log_at_val_test_epoch_end(metrics, "val")
 

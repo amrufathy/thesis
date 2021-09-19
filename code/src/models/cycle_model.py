@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple, Union
 
 from pytorch_lightning import LightningModule
-from torch import argmax
+from torch import argmax, tensor
 from transformers import BartTokenizerFast
 from transformers.optimization import AdamW
 
@@ -103,6 +103,9 @@ class CycleModel(LightningModule):
             # comp
             "comp_bleu": bleu(comp_targets, comp_predictions, prefix="comp_")["comp_bleu"],
         }
+
+        for k, v in metrics.items():
+            metrics[k] = tensor(v, device=self.device)
 
         self.log_at_val_test_epoch_end(metrics, "val")
 

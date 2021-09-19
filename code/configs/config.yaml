@@ -4,7 +4,7 @@
 defaults:
   - trainer: minimal.yaml
   - model: cycle.yaml
-  - datamodule: rocstories.yaml
+  - datamodule: roc.yaml
   - callbacks: wandb.yaml  # set this to null if you don't want to use callbacks
   - logger: wandb.yaml  # set logger here or use command line (e.g. `python run.py logger=wandb`)
 
