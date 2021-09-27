@@ -39,6 +39,8 @@ class CycleArchitectureCompress(nn.Module):
         @param dict_input: contains input_ids, attention_masks for both story and summary
         """
 
+        dict_input = dict_input.copy()
+
         # INFO - Step 1: Expansion (Summary -> Generated Story)
         expansion_results = self.expander(dict_input)
         expansion_loss, expansion_logits, expansion_ppl = (

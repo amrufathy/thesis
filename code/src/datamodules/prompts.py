@@ -7,33 +7,35 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data.dataloader import DataLoader
 from transformers import BartTokenizerFast
 
-from src.datamodules.utils import clean
+from src.datamodules.utils import MyRegexpTokenizer, clean
 
 """
 Writing Prompts dataset
+Experimental Setup #3
 
 Default split: 90/5/5
 
+[Statistics: All dataset 300K]
 Statistics about story title length:
 (BEFORE tokenization)
-Max: 67, Mean: 23.63, Std Dev: 12.76, Median: 22.00,
-95 percentile: 48.0, 99 percentile: 56.0
+Max: 64, Mean: 22.44, Std Dev: 12.67, Median: 21.00,
+95 percentile: 47.0, 99 percentile: 54.0
 
 (AFTER tokenization)
-Max: 99, Mean: 32.05, Std Dev: 15.00, Median: 30.00,
-95 percentile: 61.0, 99 percentile: 70.0
+Max: 89, Mean: 28.22, Std Dev: 14.56, Median: 26.00,
+95 percentile: 57.0, 99 percentile: 65.0
 
 
 Statistics about story length:
 (BEFORE tokenization)
-Max: 7323, Mean: 578.92, Std Dev: 390.30, Median: 478.00,
-95 percentile: 1392.0, 99 percentile: 1849.0
+Max: 6936, Mean: 542.01, Std Dev: 368.24, Median: 447.00,
+95 percentile: 1310.0, 99 percentile: 1742.0
 
 (AFTER tokenization)
-Token indices sequence length is longer than the specified maximum sequence length for this model (1501 > 1024).
-    Running this sequence through the model will result in indexing errors.
-Max: 18043, Mean: 822.31, Std Dev: 561.40, Median: 675.00,
-95 percentile: 1982.0, 99 percentile: 2631.0
+Token indices sequence length is longer than the specified maximum sequence length for this model (1307 > 1024).
+    Running this sequence through the model will result in indexing errors
+Max: 17917, Mean: 659.14, Std Dev: 448.02, Median: 543.00,
+95 percentile: 1588.0, 99 percentile: 2110.0
 """
 
 
@@ -54,8 +56,8 @@ class WritingPromptsDataModule(LightningDataModule):
         test_files: Union[str, List[str]],
         batch_size: int = 32,
         percentage: int = 100,
-        max_story_length: int = 150,
-        max_summary_length: int = 50,
+        max_story_length: int = 1024,
+        max_summary_length: int = 65,
         shuffle: bool = True,
         truncation: Union[str, bool] = True,
         padding: Union[str, bool] = "max_length",
@@ -123,9 +125,6 @@ class WritingPromptsDataModule(LightningDataModule):
         )
 
     def tokenize_example(self, example: Dict):
-        example["target"] = [clean(ex) for ex in example["target"]]
-        example["source"] = [clean(ex) for ex in example["source"]]
-
         story_embeddings = self.tokenizer(
             example["target"],
             padding=self.padding,
@@ -165,6 +164,15 @@ class WritingPromptsDataModule(LightningDataModule):
 
         dataset = concatenate_datasets([src_dataset, trgt_dataset], axis=1)
 
+        def preprocess(example):
+            """
+            Clean text
+            """
+            source, target = clean(example["source"], True), clean(example["target"])
+            return {"source": source, "target": target}
+
+        dataset = dataset.map(preprocess, batched=False, desc="Preprocessing")
+
         del src_dataset, trgt_dataset
 
         return dataset
@@ -191,6 +199,8 @@ class WritingPromptsDataModule(LightningDataModule):
         )
 
     def stats(self, dataset):
+        tokenizer = MyRegexpTokenizer(pattern=r"\w+")
+
         def length_stats(lst):
             lengths = [len(i) for i in lst]
             print(
@@ -206,7 +216,8 @@ class WritingPromptsDataModule(LightningDataModule):
 
         # stats for titles/summaries [prompts]
         titles = dataset["source"]
-        tok_titles = [clean(t).split() for t in titles]
+        # tok_titles = [clean(t).split() for t in titles]
+        tok_titles = [tokenizer(t) for t in titles]
         length_stats(tok_titles)
 
         tok_titles = self.tokenizer(titles)
@@ -214,7 +225,8 @@ class WritingPromptsDataModule(LightningDataModule):
 
         # stats for stories
         stories = dataset["target"]
-        tok_stories = [clean(s).split() for s in stories]
+        # tok_stories = [clean(s).split() for s in stories]
+        tok_stories = [tokenizer(s) for s in stories]
         length_stats(tok_stories)
 
         tok_stories = self.tokenizer(stories)

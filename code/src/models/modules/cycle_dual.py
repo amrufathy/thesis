@@ -47,6 +47,7 @@ class CycleArchitectureDual(nn.Module):
         # ==============================================
         # ==============================================
 
+        dict_input = dict_input.copy()
         original_input = dict_input.copy()
 
         # INFO - Step 1: Expansion (Summary -> Generated Story)
@@ -122,11 +123,11 @@ class CycleArchitectureDual(nn.Module):
         # ==============================================
         # ==============================================
 
-        # TODO: check loss and logits computation
-        expansion_loss = mean(tensor([expansion_loss_1, expansion_loss_2]))
+        # loss has to be sum (not mean) to be differentiable
+        expansion_loss = expansion_loss_1 + expansion_loss_2
         expansion_ppl = mean(tensor([expansion_ppl_1, expansion_ppl_2]))
 
-        compression_loss = mean(tensor([compression_loss_1, compression_loss_2]))
+        compression_loss = compression_loss_1 + compression_loss_2
 
         total_loss = expansion_loss + compression_loss
 

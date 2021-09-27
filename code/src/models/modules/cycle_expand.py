@@ -39,6 +39,8 @@ class CycleArchitectureExpand(nn.Module):
         @param dict_input: contains input_ids, attention_masks for both story and summary
         """
 
+        dict_input = dict_input.copy()
+
         # INFO - Step 1: Compression (Story -> Generated Summary)
         compression_results = self.compressor(dict_input)
         compression_loss, compression_logits = (

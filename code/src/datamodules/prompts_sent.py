@@ -11,29 +11,31 @@ from src.datamodules.utils import MyRegexpTokenizer, clean
 
 """
 Writing Prompts dataset
+Experimental Setup #2
 
 Default split: 90/5/5
 
+[Statistics: All dataset 300K]
 Statistics about story title length:
 (BEFORE tokenization)
-Max: 2340, Mean: 37.56, Std Dev: 23.33, Median: 35.00,
-95 percentile: 67.0, 99 percentile: 90.0
+Max: 64, Mean: 22.44, Std Dev: 12.67, Median: 21.00,
+95 percentile: 47.0, 99 percentile: 54.0
 
 (AFTER tokenization)
-Token indices sequence length is longer than the specified maximum sequence length for this model (1301 > 1024).
-    Running this sequence through the model will result in indexing errors
-Max: 4093, Mean: 51.40, Std Dev: 38.38, Median: 47.00,
-95 percentile: 87.0, 99 percentile: 130.0
+Max: 89, Mean: 28.22, Std Dev: 14.56, Median: 26.00,
+95 percentile: 57.0, 99 percentile: 65.0
 
 
 Statistics about story length:
 (BEFORE tokenization)
-Max: 1869, Mean: 141.78, Std Dev: 53.67, Median: 134.00,
-95 percentile: 236.0, 99 percentile: 306.0
+Max: 2433, Mean: 135.00, Std Dev: 53.01, Median: 127.00,
+95 percentile: 226.0, 99 percentile: 297.0
 
 (AFTER tokenization)
-Max: 18005, Mean: 196.59, Std Dev: 79.48, Median: 186.00,
-95 percentile: 315.0, 99 percentile: 422.0
+Token indices sequence length is longer than the specified maximum sequence length for this model (1304 > 1024).
+Running this sequence through the model will result in indexing errors
+Max: 17917, Mean: 164.85, Std Dev: 72.50, Median: 156.00,
+95 percentile: 270.0, 99 percentile: 355.0
 """
 
 
@@ -46,20 +48,20 @@ class WritingPromptsOneSentenceDataModule(LightningDataModule):
     """
 
     def __init__(
-            self,
-            data_dir: str,
-            processed_data_dir: str,
-            train_files: Union[str, List[str]],
-            val_files: Union[str, List[str]],
-            test_files: Union[str, List[str]],
-            batch_size: int = 32,
-            percentage: int = 100,
-            max_story_length: int = 150,
-            max_summary_length: int = 50,
-            shuffle: bool = True,
-            truncation: Union[str, bool] = True,
-            padding: Union[str, bool] = "max_length",
-            load_dataset_from_file: bool = False,
+        self,
+        data_dir: str,
+        processed_data_dir: str,
+        train_files: Union[str, List[str]],
+        val_files: Union[str, List[str]],
+        test_files: Union[str, List[str]],
+        batch_size: int = 32,
+        percentage: int = 100,
+        max_story_length: int = 355,
+        max_summary_length: int = 65,
+        shuffle: bool = True,
+        truncation: Union[str, bool] = True,
+        padding: Union[str, bool] = "max_length",
+        load_dataset_from_file: bool = False,
     ):
         super().__init__()
 
@@ -123,9 +125,6 @@ class WritingPromptsOneSentenceDataModule(LightningDataModule):
         )
 
     def tokenize_example(self, example: Dict):
-        example["target"] = [clean(ex) for ex in example["target"]]
-        example["source"] = [clean(ex) for ex in example["source"]]
-
         story_embeddings = self.tokenizer(
             example["target"],
             padding=self.padding,
@@ -169,13 +168,14 @@ class WritingPromptsOneSentenceDataModule(LightningDataModule):
 
         def preprocess(example):
             """
-            - Append 1st sentence from target to source
+            - Clean text
             - Limit target to ten sentences
             """
-            source, target = example["source"], example["target"]
-            sent_src, sent_trgt = sent_tokenize(source), sent_tokenize(target)
+            source, target = clean(example["source"], True), example["target"]
+            trgt_sent = sent_tokenize(target)[:10]
+            target = clean(" ".join(trgt_sent))
 
-            return {"source": " ".join(sent_src + [sent_trgt[0]]), "target": " ".join(sent_trgt[1:11])}
+            return {"source": source, "target": target}
 
         dataset = dataset.map(preprocess, batched=False, desc="Preprocessing")
 
