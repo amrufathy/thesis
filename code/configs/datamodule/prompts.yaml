@@ -1,6 +1,6 @@
 _target_: src.datamodules.prompts.WritingPromptsDataModule
 
-data_dir: ${data_dir}/writingPrompts  # data_dir is specified in config.yaml
+data_dir: ${data_dir}/prompts  # data_dir is specified in config.yaml
 batch_size: 32
 percentage: 100  # percentage of dataset to load
 shuffle: True  # `True` shuffles dataset every epoch
@@ -9,7 +9,7 @@ truncation: True  # truncation strategy (check `Tokenizers` documentation)
 max_story_length: 1024  # max story length in tokens (enforced)
 max_summary_length: 65  # max summary length in tokens (enforced)
 load_dataset_from_file: True
-train_files: [ 'train.wp_source', 'train.wp_target' ]
-val_files: [ 'valid.wp_source', 'valid.wp_target' ]
-test_files: [ 'test.wp_source', 'test.wp_target' ]
-processed_data_dir: '${data_dir}/.processed_writingprompts'
+train_files: 'train.csv'
+val_files: 'valid.csv'
+test_files: 'test.csv'
+processed_data_dir: '${data_dir}/proc_prompts'

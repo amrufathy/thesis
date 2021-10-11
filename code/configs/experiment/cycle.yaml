@@ -25,6 +25,7 @@ trainer:
 model:
   direction: "dual"
   use_gumbel_softmax: False
+  use_semantic_similarity: False
 
 datamodule:
   batch_size: 32

@@ -1,5 +1,7 @@
 from typing import Dict, List, Union
 
+import numpy as np
+from datasets import load_metric
 from pytorch_lightning import LightningModule
 from torch import argmax, tensor
 from transformers import BartTokenizerFast
@@ -19,6 +21,9 @@ class ExpanderModel(LightningModule):
             max_generation_length=max_generation_length,
         )
         self.lr = learning_rate
+
+        self.bleurt = load_metric("bleurt", "bleurt-base-512")
+        self.bert_score = load_metric("bertscore")
 
         self.references = []
         self.predictions = []
@@ -88,6 +93,9 @@ class ExpanderModel(LightningModule):
         self.references.extend(targets)
         self.predictions.extend(predictions)
 
+        self.bleurt.add_batch(predictions=predictions, references=targets)
+        self.bert_score.add_batch(predictions=predictions, references=targets)
+
         return results["loss"]
 
     def on_test_epoch_end(self):
@@ -99,6 +107,8 @@ class ExpanderModel(LightningModule):
         metrics = {
             **bleu(self.references, self.predictions),
             **distinct_n(self.predictions),
+            "bleurt": np.mean(self.bleurt.compute()["scores"]),
+            "bertscore": np.mean(self.bertscore.compute(lang="en", rescale_with_baseline=True)["f1"]),
         }
 
         self.log_at_val_test_epoch_end(metrics, "test")

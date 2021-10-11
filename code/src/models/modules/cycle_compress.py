@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 from torch import argmax, nn
 from transformers import BartTokenizerFast
 
-from src.models.modules import Compressor, Expander
+from src.models.modules import Compressor, Expander, SemanticBert
 from src.utils.model_utils import get_gumbel_sampled_embeddings
 
 
@@ -15,6 +15,7 @@ class CycleArchitectureCompress(nn.Module):
         use_gumbel_softmax: bool = False,
         max_story_length: int = 70,
         max_summary_length: int = 7,
+        **kwargs
     ):
         super().__init__()
 
@@ -30,6 +31,9 @@ class CycleArchitectureCompress(nn.Module):
         self.use_gumbel_softmax = use_gumbel_softmax
 
         self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.expander.pad_token_id)
+
+        # self.semantic_bert = SemanticBert(**kwargs)
+        # self.use_semantic_sim = kwargs.get("use_semantic_similarity", False)
 
     def forward(self, dict_input: Dict) -> Dict:
         """
@@ -48,6 +52,16 @@ class CycleArchitectureCompress(nn.Module):
             expansion_results["logits"],
             expansion_results["ppl"],
         )
+
+        # INFO: learn semantic similarity
+        # if self.use_semantic_sim:
+        #     semantic_loss = self.semantic_bert.step(
+        #         gold_stories_ids=dict_input["story_ids"],
+        #         generated_stories_ids=argmax(expansion_logits, dim=-1),
+        #         external_tokenizer=self.tokenizer,
+        #     )
+        # else:
+        #     semantic_loss = 0.0
 
         # INFO: if using gumbel then the whole cycle is differentiable
         #  if not using gumbel then dual learning technique
@@ -77,6 +91,7 @@ class CycleArchitectureCompress(nn.Module):
             "loss": total_loss,
             "exp_loss": expansion_loss,
             "comp_loss": compression_loss,
+            # "sem_loss": semantic_loss,
             # logits
             "exp_logits": expansion_logits,
             "comp_logits": compression_logits,

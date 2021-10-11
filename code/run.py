@@ -7,7 +7,10 @@ from omegaconf import DictConfig
 # recursively searches for `.env` in all folders starting from work dir
 dotenv.load_dotenv(override=True)
 
-nltk.download("punkt")
+try:
+    nltk.data.find("tokenizers/punkt")
+except LookupError:
+    nltk.download("punkt")
 
 
 @hydra.main(config_path="configs/", config_name="config.yaml")

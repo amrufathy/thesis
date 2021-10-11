@@ -9,3 +9,5 @@ expander_learning_rate: 5e-5
 compressor_learning_rate: 5e-5
 max_story_length: ${datamodule.max_story_length}  # max length to use when generating stories
 max_summary_length: ${datamodule.max_summary_length}  # max length to use when generating summaries
+semantic_bert_path: ${data_dir}/story-bert
+use_semantic_similarity: True

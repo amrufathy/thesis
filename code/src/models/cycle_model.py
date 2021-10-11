@@ -1,5 +1,7 @@
 from typing import Dict, List, Tuple, Union
 
+import numpy as np
+from datasets import load_metric
 from pytorch_lightning import LightningModule
 from torch import argmax, tensor
 from transformers import BartTokenizerFast
@@ -35,6 +37,7 @@ class CycleModel(LightningModule):
             "use_gumbel_softmax": use_gumbel_softmax,
             "max_story_length": max_story_length,
             "max_summary_length": max_summary_length,
+            **kwargs,
         }
 
         if direction in {"comp", "compress", "compressor"}:
@@ -46,6 +49,9 @@ class CycleModel(LightningModule):
 
         self.comp_lr = compressor_learning_rate
         self.exp_lr = expander_learning_rate
+
+        self.bleurt = load_metric("bleurt", "bleurt-base-512")
+        self.bert_score = load_metric("bertscore")
 
         self.story_references, self.summary_references = [], []
         self.story_predictions, self.summary_predictions = [], []
@@ -60,6 +66,7 @@ class CycleModel(LightningModule):
         self.log("train/loss", results["loss"], on_step=True, on_epoch=True, prog_bar=True)
         self.log("train/exp_loss", results["exp_loss"], on_step=True, on_epoch=True, prog_bar=True)
         self.log("train/comp_loss", results["comp_loss"], on_step=True, on_epoch=True, prog_bar=True)
+        # self.log("train/sem_loss", results["sem_loss"], on_step=True, on_epoch=True, prog_bar=True)
 
         self.log("train/exp_ppl", results["exp_ppl"], on_step=False, on_epoch=True)
         # fmt: on
@@ -82,6 +89,7 @@ class CycleModel(LightningModule):
         self.log("val/loss", results["loss"], on_step=False, on_epoch=True)
         self.log("val/exp_loss", results["exp_loss"], on_step=False, on_epoch=True)
         self.log("val/comp_loss", results["comp_loss"], on_step=False, on_epoch=True)
+        # self.log("val/sem_loss", results["sem_loss"], on_step=False, on_epoch=True)
 
         self.log("val/exp_ppl", results["exp_ppl"], on_step=False, on_epoch=True)
         # fmt: on
@@ -123,6 +131,7 @@ class CycleModel(LightningModule):
         self.log("test/loss", results["loss"], on_step=False, on_epoch=True)
         self.log("test/exp_loss", results["exp_loss"], on_step=False, on_epoch=True)
         self.log("test/comp_loss", results["comp_loss"], on_step=False, on_epoch=True)
+        # self.log("test/sem_loss", results["sem_loss"], on_step=False, on_epoch=True)
 
         self.log("test/exp_ppl", results["exp_ppl"], on_step=False, on_epoch=True)
         # fmt: on
@@ -135,6 +144,9 @@ class CycleModel(LightningModule):
 
         self.story_references.extend(story_targets)
         self.story_predictions.extend(story_predictions)
+
+        self.bleurt.add_batch(predictions=story_predictions, references=story_targets)
+        self.bert_score.add_batch(predictions=story_predictions, references=story_targets)
 
         # comp: accumulate bleu sys & refs
         summary_targets = self.arch.compressor.ids_to_clean_text(batch["summary_ids"])
@@ -157,6 +169,8 @@ class CycleModel(LightningModule):
             # exp
             **bleu(self.story_references, self.story_predictions, prefix="exp_"),
             **distinct_n(self.story_predictions, prefix="exp_"),
+            "bleurt": np.mean(self.bleurt.compute()["scores"]),
+            "bertscore": np.mean(self.bertscore.compute(lang="en", rescale_with_baseline=True)["f1"]),
             # comp
             "comp_bleu": bleu(self.summary_references, self.summary_predictions, prefix="comp_")["comp_bleu"],
         }

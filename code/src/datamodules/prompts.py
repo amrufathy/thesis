@@ -2,12 +2,12 @@ from os.path import join
 from typing import Dict, List, Union
 
 import numpy as np
-from datasets import DatasetDict, Features, concatenate_datasets, load_dataset, load_from_disk
+from datasets import ReadInstruction, concatenate_datasets, load_dataset, load_from_disk
 from pytorch_lightning import LightningDataModule
 from torch.utils.data.dataloader import DataLoader
 from transformers import BartTokenizerFast
 
-from src.datamodules.utils import MyRegexpTokenizer, clean
+from src.datamodules.utils import MyRegexpTokenizer
 
 """
 Writing Prompts dataset
@@ -36,6 +36,35 @@ Token indices sequence length is longer than the specified maximum sequence leng
     Running this sequence through the model will result in indexing errors
 Max: 17917, Mean: 659.14, Std Dev: 448.02, Median: 543.00,
 95 percentile: 1588.0, 99 percentile: 2110.0
+"""
+
+"""
+Writing Prompts dataset
+Experimental Setup #2
+
+Default split: 90/5/5
+
+[Statistics: All dataset 300K]
+Statistics about story title length:
+(BEFORE tokenization)
+Max: 64, Mean: 22.44, Std Dev: 12.67, Median: 21.00,
+95 percentile: 47.0, 99 percentile: 54.0
+
+(AFTER tokenization)
+Max: 89, Mean: 28.22, Std Dev: 14.56, Median: 26.00,
+95 percentile: 57.0, 99 percentile: 65.0
+
+
+Statistics about story length:
+(BEFORE tokenization)
+Max: 2433, Mean: 135.00, Std Dev: 53.01, Median: 127.00,
+95 percentile: 226.0, 99 percentile: 297.0
+
+(AFTER tokenization)
+Token indices sequence length is longer than the specified maximum sequence length for this model (1304 > 1024).
+Running this sequence through the model will result in indexing errors
+Max: 17917, Mean: 164.85, Std Dev: 72.50, Median: 156.00,
+95 percentile: 270.0, 99 percentile: 355.0
 """
 
 
@@ -76,9 +105,9 @@ class WritingPromptsDataModule(LightningDataModule):
         self.load_from_file = load_dataset_from_file
 
         self.processed_dataset_path = processed_data_dir
-        self.train_paths = [join(data_dir, path) for path in train_files]
-        self.val_paths = [join(data_dir, path) for path in val_files]
-        self.test_paths = [join(data_dir, path) for path in test_files]
+        self.train_paths = join(data_dir, train_files)
+        self.val_paths = join(data_dir, val_files)
+        self.test_paths = join(data_dir, test_files)
 
         self.tokenized_dataset = None
         self.tokenizer = BartTokenizerFast.from_pretrained("facebook/bart-base")
@@ -89,16 +118,14 @@ class WritingPromptsDataModule(LightningDataModule):
     def setup(self, *args, **kwargs):
         if not self.load_from_file:
             # load dataset from text files
-            train_dataset = self.load_concatenated_dataset(self.train_paths)
-            val_dataset = self.load_concatenated_dataset(self.val_paths)
-            test_dataset = self.load_concatenated_dataset(self.test_paths)
-
-            dataset = DatasetDict(
-                {
-                    "train": train_dataset,
-                    "val": val_dataset,
-                    "test": test_dataset,
-                }
+            dataset = load_dataset(
+                "csv",
+                data_files={"train": self.train_paths, "val": self.val_paths, "test": self.test_paths},
+                split={
+                    "train": ReadInstruction("train", to=self.percentage, unit="%"),
+                    "val": ReadInstruction("val", to=self.percentage, unit="%"),
+                    "test": ReadInstruction("test", to=self.percentage, unit="%"),
+                },
             )
 
             # self.stats(dataset)
@@ -109,7 +136,7 @@ class WritingPromptsDataModule(LightningDataModule):
 
             self.tokenized_dataset.save_to_disk(self.processed_dataset_path)
 
-            del dataset, train_dataset, val_dataset, test_dataset
+            del dataset
         else:
             self.tokenized_dataset = load_from_disk(self.processed_dataset_path)
 
@@ -144,38 +171,6 @@ class WritingPromptsDataModule(LightningDataModule):
             "summary_ids": summary_embeddings["input_ids"],
             "summary_attn_msk": summary_embeddings["attention_mask"],
         }
-
-    def load_concatenated_dataset(self, dataset_paths):
-        src_path, trgt_path = dataset_paths
-
-        src_dataset = load_dataset(
-            "text",
-            data_files={"_": src_path},
-            split=f"_[:{self.percentage}%]",
-            features=Features.from_dict({"source": {"dtype": "string", "_type": "Value"}}),
-        )
-
-        trgt_dataset = load_dataset(
-            "text",
-            data_files={"_": trgt_path},
-            split=f"_[:{self.percentage}%]",
-            features=Features.from_dict({"target": {"dtype": "string", "_type": "Value"}}),
-        )
-
-        dataset = concatenate_datasets([src_dataset, trgt_dataset], axis=1)
-
-        def preprocess(example):
-            """
-            Clean text
-            """
-            source, target = clean(example["source"], True), clean(example["target"])
-            return {"source": source, "target": target}
-
-        dataset = dataset.map(preprocess, batched=False, desc="Preprocessing")
-
-        del src_dataset, trgt_dataset
-
-        return dataset
 
     def train_dataloader(self):
         return DataLoader(

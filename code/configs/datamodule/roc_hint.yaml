@@ -1,0 +1,13 @@
+_target_: src.datamodules.roc_hint.ROCStoriesHINTDataModule
+
+data_dir: ${data_dir}/roc  # data_dir is specified in config.yaml
+batch_size: 32
+percentage: 100  # percentage of dataset to load
+shuffle: True  # `True` shuffles dataset every epoch
+max_story_length: 100  # max story length in tokens
+max_summary_length: 30  # max summary length in tokens
+load_dataset_from_file: True
+train_files: 'roc_hint_raw_train.csv'
+val_files: 'roc_hint_raw_val.csv'
+test_files: 'roc_hint_raw_test.csv'
+processed_data_dir: '${data_dir}/proc_roc_stories_hint'
