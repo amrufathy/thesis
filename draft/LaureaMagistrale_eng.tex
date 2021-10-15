@@ -1,0 +1,97 @@
+% !TeX encoding = UTF-8
+% !TeX program = pdflatex
+% !TeX spellcheck = en_US
+
+% https://biccari.altervista.org/c/informatica/latex/sapthesis.php
+
+\documentclass[LaM,binding=0.6cm]{sapthesis}
+
+\usepackage{microtype}
+
+\usepackage{hyperref}
+\usepackage[noabbrev,capitalize]{cleveref}
+\usepackage{amsfonts}
+\usepackage[square, authoryear]{natbib}
+\usepackage{setspace}
+\usepackage{subcaption}
+
+\onehalfspacing
+%\doublespacing
+
+\crefformat{section}{\S#2#1#3} % see manual of cleveref, section 8.2.1
+\crefformat{subsection}{\S#2#1#3}
+\crefformat{subsubsection}{\S#2#1#3}
+
+\hypersetup{pdftitle={Cycle-Consistent Story Generation},pdfauthor={Amr Fathy}}
+
+\newcommand{\bs}{\textbackslash}
+
+% Commands for the titlepage
+\title{Cycle-Consistent Story Generation}
+\author{Amr Fathy}
+\IDnumber{1848399}
+\course{Artificial Intelligence and Robotics}
+\courseorganizer{Dipartimento di Ingegneria Informatica, Automatica e Gestionale}
+\AcademicYear{2020/2021}
+\copyyear{2021}
+\advisor{Prof. Roberto Navigli}
+\coadvisor{Dr. Rexhina Blloshmi}
+\authoremail{amru.a.fathy@gmail.com}
+
+\examdate{October 22, 2021}
+\examiner{Prof.  Marco Schaerf}
+\examiner{Prof. Anagnostopoulos Aristidis}
+\examiner{Prof. Daniele Nardi}
+\examiner{Prof. Roberto Navigli}
+\examiner{Prof. Fiora Pirri}
+\examiner{Prof. Marilena Vendittelli}
+\examiner{Prof. Daniele Venturi}
+\versiondate{\today}
+
+
+\begin{document}
+
+\frontmatter
+
+\maketitle
+
+%\dedication{Dedicated to\\ Donald Knuth}
+
+\include{abstract/abstract}
+
+%\input{acknowledgments/acknowledgments}
+
+\tableofcontents
+%\listoffigures
+%\listoftables
+
+% Do not use the starred version of the chapter command!
+
+\mainmatter
+
+\include{introduction/introduction}
+
+\include{body/background}
+
+\include{body/related_work}
+
+\include{body/main_idea}
+
+\include{body/evaluation}
+
+\include{conclusion/conclusion}
+
+
+\backmatter
+
+% bibliography
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{chapter}{\bibname}
+%\bibliographystyle{sapthesis} % BibTeX style
+%\bibliographystyle{abbrvnat} % BibTeX style
+\bibliographystyle{styles/acl_natbib}
+\bibliography{references} % BibTeX database without .bib extension
+
+
+\end{document}

@@ -1,0 +1,366 @@
+\chapter{Evaluation}
+\label{ch:evaluation}
+
+
+%Experimental setup
+%Datasets
+%ROC Stories
+%Writing Prompts
+%Data stats 
+%Evaluation metrics
+%BLEU
+%Distinctiveness
+%Perplexity
+%Other metrics?
+%Experiments
+%Using ROC title as input and whole story as output
+%Using ROC title + 1st sentence as input and rest of story as output
+%Writing prompts as is
+%Results
+
+In this section, we overview the datasets we use and what settings/formats they are used in (\cref{sec:datasets}). Then, we discuss the metrics used to evaluate the models (\cref{sec:eval_metrics}). Finally, we report empirical results and comment on them (\cref{sec:experiments}).
+
+\section{Datasets}
+\label{sec:datasets}
+
+We use two datasets that are popular and widely used in story generation related works.
+
+\subsection{ROCStories}
+\label{sec:roc_stories}
+
+We use ROCStories \cite[ROC]{mostafazadeh2016corpus} to train and evaluate our model. ROC is a dataset of short commonsense stories that focuses on: (1) building causal and temporal relations between commonly encountered day-to-day events that span multiple domains, and (2) high-quality non-fictional events that one could easily relate to, making storytelling models trained on it more believable.
+
+ROC contains 98,161 five-sentence short stories paired with their titles. We use the dataset in two settings shown in \cref{tab:roc-samples}. In the first setting, we use only the title as the input (summary) and the model is required to generate the five sentences. While the second is where we also concatenate the first sentence of the story to the title and the model is asked to predict a story of four sentences. Statistics for the two settings are shown in \cref{tab:roc-statistics}.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{0.08\linewidth} | p{0.25\linewidth} | p{0.5\linewidth}}
+Setting & Summary  & Story \\ \hline
+\# 1 & Steve's Award. & Steve got a call from his boss. He said that Steve was getting an award. He entered the conference room to applause. He accepted the award humbly. Steve was proud of his accomplishment. \\ \hline
+      
+\# 2 & Steve's Award. Steve got a call from his boss. & He said that Steve was getting an award. He entered the conference room to applause. He accepted the award humbly. Steve was proud of his accomplishment. \\
+\end{tabular}
+\caption{A sample story from ROC stories%. Top is the first setting with a title-only summary. Bottom is the second setting with title+first sentence summary.
+}
+\label{tab:roc-samples}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{l|rr}
+
+            & Input & Output \\ \hline
+Setting \#1 & 5     & 53.35  \\
+Setting \#2 & 14.39 & 43.78 \\
+\end{tabular}
+\caption{Average number of tokens in the input \\ and output for both ROC settings}
+\label{tab:roc-statistics}
+\end{table}
+
+
+\subsection{Writing Prompts}
+\label{sec:writing_prompts}
+
+Writing Prompts \cite[WP]{fan2018hierarchical} was collected from an online community where users post story prompts and other users are allowed to respond freely with a story that follows the prompt. The prompts vary in terms of length, topic, and level of detail. The stories collected have to be more than 30 words, generally follow the prompt, and avoid profanity.
+
+WP contains 303,358 prompt-story pairs and a prompt can have more than one story. An example is presented in \cref{tab:wp-samples}. Similar to ROC, we explore two settings in WP. The first uses the dataset as-is during training with a maximum story length of 1024 and limits the story to a maximum of 150 tokens at evaluation time. The second limits the story to the first ten sentences (split using NLTK) and uses only a subset of the dataset which is discussed later.
+
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{0.1\linewidth} | p{0.8\linewidth}}
+Summary  & The witch stole his heart, and replaced it with ice. Now he can not love, lest it melts. \\ \hline
+Story & 
+I stare at the retreating figure of the witch who had just cursed me. I feel the cold spread from the lump of ice now in place of my heart. Did she seriously just do this so I can't love again? Love doesn't create actual heat. Don't you understand the laws of thermodynamics? I shout after her slowly fading form. I see a minute shrug as she disappears from my eyeline and give out a weak gurgle as I fall to my knees. As the floor rises to greet my face, it occurs to me that she doesn't much understand the laws of biology either. \\
+\end{tabular}
+\caption{A sample story from WP}
+\label{tab:wp-samples}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{l|rr}
+            & Input & Output \\ \hline
+Setting \#1 & 28.22 & 659.14 \\
+Setting \#2 & 28.22 & 164.85 \\
+\end{tabular}
+\caption{Average number of tokens in the input \\ and output for both WP settings}
+\label{tab:wp-statistics}
+\end{table}
+
+
+% =================================================================================================
+
+\section{Evaluation Metrics}
+\label{sec:eval_metrics}
+
+We use a combination of automatic evaluation metrics to assess the quality of the generated stories from multiple aspects.	
+
+\subsection{Perplexity}
+\label{sec:perplexity}
+
+We use perplexity as a method of intrinsic evaluation for the models. For autoregressive language models, perplexity is the inverse of the probability of the dataset normalized by the number of word tokens. Maximizing such probability is equivalent to minimizing the perplexity of the model. Intuitively, the perplexity of an LM is the level of uncertainty when predicting the next token \citep{chip2019evaluation}. For models that use the negative log-likelihood loss, the perplexity can be computed as:
+\[ \text{PPL}(X) = \exp \left\{ - \frac{1}{t} \sum_{i}^{t} \log p_{\theta} (x_i \mid \mathbf{x}_{<i})  \right\} \]
+
+Generally, smaller perplexity scores indicate better text fluency.
+
+
+
+\subsection{BLEU}
+\label{sec:bleu}
+
+Bilingual Evaluation Understudy (BLEU for short) \citep{papineni2002bleu} is a string-matching algorithm that is used for evaluating the quality of translations tasks. BLEU measures the correspondence between machine-generated translations and human-written translations.% Thus a higher BLEU score indicates a better correlation to human performance. 
+The driving idea is that the closer (more overlapping tokens) the machine translation is to the human's, the better it is.
+
+The BLEU $n$-gram precision $p_n$ is defined over a corpus $\mathcal{C}$ as follows:
+\[ p_n = \dfrac
+{\sum_{S \in \mathcal{C}} \quad \sum_{n\text{-gram} \in S} \text{Count}_\text{\textit{clip}}(n\text{-gram})}
+{\sum_{S' \in \mathcal{C}} \quad \sum_{n\text{-gram} \in S'} \text{Count}(n\text{-gram})} 
+\]
+where $S$ is a sentence or a segment of the corpus, and $\text{Count}_\text{\textit{clip}}$ bounds the count of an $n$-gram to the maximum count found in any single reference for that $n$-gram.
+
+The overall BLEU score is calculated as a geometric mean of the precisions penalized by some brevity penalty to account for short sentences:
+\[ \text{BLEU} = \text{BP} \,\cdot\, \exp\left\{ \sum_{i=1}^{N} w_n \log p_n \right\}, \quad 
+\text{BP} =  \begin{cases}
+	\exp\left\{ 1 - \dfrac{|\text{ref}|} { |\text{hyp}| }\right\}, & \text{ if |ref| > |hyp| } \\
+	1, & \text{ otherwise } \\
+\end{cases}
+\]
+
+However, recently BLEU has been criticized for its word-to-word similarity matching making paraphrases or synonyms receive poor scores \citep{callison2006re, cifka2018bleu, mathur2020tangled}. Moreover, texts that contain the right phrases with a wrong/random order can still be considered good. This misleads the overall evaluation of the system. %For this reason, we consider using an evaluation method that takes into account the semantics of the generated text (\cref{sec:bleurt}).
+
+
+\subsection{Distinctness}
+\label{sec:diversity}
+
+Language models tend to generate generic texts that are frequently repeated in text corpora. This is attributed to the objective function used to optimize most LMs -- which is optimizing for the likelihood of outputs given the inputs. Naturally, this leads to neural models picking outputs that maximize the conditional probability which can be a limited set of tokens \citep{li2015diversity}. We follow the work of \citep{li2015diversity} and compute the \textsc{distinct}-$n$ metric to evaluate the diversity of the generated text.
+
+This metric captures the percentage of unique $n$-grams as follows:
+\[ \textsc{distinct-}n = \frac{\text{number of unique $n$-grams}}{\text{total number of $n$-grams}} \]
+
+Having a higher distinctness/diversity score would indicate that the model is able to generate novel and interesting text. This is an essential property in storytelling to catch the attention of the reader.
+
+
+%\subsection{BLEURT}
+%\label{sec:bleurt}
+
+%BLEURT \citep{sellam2020bleurt} is a learned metric that uses BERT along with some pretraining signals to learn to evaluate the quality of machine-generated texts. This learnable metric uses BERT to extract contextual embeddings for the input text (conveying semantics) and is trained to optimize multiple regression losses obtained from comparing to BLEU (\cref{sec:bleu}), ROUGE \citep{lin2004rouge}, BERTscore \citep{zhang2019bertscore}, and back-translation.
+
+%BLEURT shows a better correlation to human evaluation and ability to understand semantics -- including paraphrases and synonyms. This makes it applicable to our case where two stories might share the same semantics but have little token overlap.
+
+
+% =================================================================================================
+
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Implementation}
+\label{sec:implementation}
+
+Our framework can work with any seq2seq model in theory. For our experiments, we use BART as the base block in all variants of the model. We use the Transformers library by Hugging Face \citep{wolf2020transformers} to implement our models. Due to limited resources, we use publicly available pretrained weights of $\text{BART}_\textsc{base}$ \footnote{\url{https://huggingface.co/facebook/bart-base}} to initialize our models. Our models are trained on Tesla P100 and V100 GPUs.
+
+For ROC, the batch size for the baseline model is 64 and for the cycle model 32 with gradient accumulation set to 2 steps. In the first setting, the maximum story length is 110 tokens while for the second it is 90 tokens.
+
+Similarly for WP, the batch size for the baseline is 16 and for the cycle model 8 with gradient accumulation set to 2 steps. In the first setting, the maximum story length is 1024 tokens during training and 150 tokens during evaluation while for the second setting it is 350 tokens.
+
+All models are trained for 20 epochs using the early stopping mechanism that monitors the BLEU score on the validation set with a patience of 5 epochs. At evaluation time, we generate texts using beam search ($n = 5$) on top of nucleus sampling \citep{holtzman2019curious} with $p = 0.9$ and default temperature 1.0. A summary of the hyperparameters can be found in \cref{tab:hyperparameters}.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{l|r}
+Parameter & Value \\ \hline
+\multicolumn{2}{l}{\textbf{ROC}} \\
+Baseline batch size & 64 \\
+Cycle batch size & 32 \\
+Cycle gradient accumulation & 2 steps \\
+Max story length (setting \# 1) & 110 tokens \\
+Max story length (setting \# 2) & 90 tokens \\ \hline
+\multicolumn{2}{l}{\textbf{WP}} \\
+Baseline batch size & 16 \\
+Cycle batch size & 8 \\
+Cycle gradient accumulation & 2 steps \\
+Max story length (setting \# 1) & 1024 tokens \\
+Max story length (setting \# 2) & 350 tokens \\ \hline
+\multicolumn{2}{l}{\textbf{Generation}} \\
+Beam size & 5 \\
+$p$ & 0.9 \\
+Temperature & 1.0 \\ \hline
+\end{tabular}
+\caption{Hyperparameters used in different models}
+\label{tab:hyperparameters}
+\end{table}
+
+We test the cycle starting from the two possible endpoints $\text{Cycle}_{\textsc{exp}}$ (Story $\rightarrow$ Summary $\rightarrow$ Story) and vice versa $\text{Cycle}_{\textsc{comp}}$ (Summary $\rightarrow$ Story $\rightarrow$ Summary) -- recall \cref{fig:cycle_directions}. For ROC we report the best out of the two directions (which is $\text{Cycle}_{\textsc{comp}}$) and for WP we report both for reasons outlined in the results section (\cref{sec:wp_results}).
+
+\subsection{Comparison Systems}
+
+In our experiments, we report results for some variants of our models:
+
+\begin{itemize}
+\item \textbf{Baseline} -- the baseline model discussed in \cref{sec:baseline_arch}. A BART model that performs a seq2seq task with the summary as input and the story as output.
+
+\item $\textbf{Cycle}_{\textsc{comp}}$ -- the cycle architecture explained in \cref{sec:cycle_arch} where we start with a summary, translate it to a story, and then back into a summary -- recall \cref{fig:cycle_model_direction_comp}.
+
+\item $\textbf{Cycle}_{\textsc{exp}}$ -- the same as $\textbf{Cycle}_{\textsc{comp}}$, but in the other direction where we start with a story, translate it to a summary, and then back into a story  -- recall \cref{fig:cycle_model_direction_exp}.
+
+\item $\textbf{Cycle}_{\textsc{comp}}$-\textbf{GS} -- the same as $\textbf{Cycle}_{\textsc{comp}}$, but the intermediate text is sampled using the Gumbel-softmax reparameterization trick (\cref{sec:gumbel_softmax}) instead of greedy sampling.
+
+\item $\textbf{Cycle}_{\textsc{exp}}$-\textbf{GS} -- the same as $\textbf{Cycle}_{\textsc{exp}}$, but the intermediate text is sampled using the Gumbel-softmax reparameterization trick (\cref{sec:gumbel_softmax}) instead of greedy sampling.
+\end{itemize}
+
+
+We further compare our system with other models from the literature:
+
+\begin{itemize}
+\item \textbf{Hierarchical} -- the hierarchical story generation model by \citep{fan2018hierarchical}. They use a ConvS2S LM to generate a premise to guide the story, then they use a seq2seq fusion model to generate the story from the premise.
+
+\item \textbf{H-CVAE} -- the multi-pass CVAE by \citep{yu2020draft}. Their CVAE is built on the seq2seq mechanism with a GRU encoder and a hierarchical decoder that considers global and local semantics. The first CVAE generates a draft of the story from the title, and the second consumes the draft and the title to generate the final story.
+
+\item \textbf{HINT} -- the multi-task model by \citep{guan2021long}. In addition to the LM task, they add a sentence similarity task to learn sentence-level representations and a sentence ordering task to learn discourse-level representations.
+\end{itemize}
+
+\subsection{ROC Stories Results}
+\label{sec:roc_results}
+
+In \cref{table:roc_1_results}, we show the results for the first setting of ROC stories, which we recall from \cref{tab:roc-samples}, takes as input only the title of the story. B-1 and B-2 stand for \textsc{bleu}-1 and \textsc{bleu}-2 scores, and similarly for D-1 and D-2 with the \textsc{distinct}-$n$ score. PPL stands for perplexity.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{l|rr|rr|r}
+Model & B-1 $\uparrow$ & B-2 $\uparrow$ & D-1 $\uparrow$ & D-2 $\uparrow$ & PPL $\downarrow$  \\ \hline
+Hierarchical & 15.01 & 6.21 & 1.57 & 13.36 & - \\
+H-CVAE & 29.39 & 11.02 & 1.99 & 14.82 & - \\ \hline
+Baseline & 28.97 & 13.59 & 3.4 & 19.9  & 12.33 \\
+Cycle & \textbf{30.19} & \textbf{14.28} & \textbf{3.5} & \textbf{21.2} & 13.919 \\
+Cycle-GS & 29.6 & 13.97 & 2.9 & 17.2 & \textbf{11.88}
+\end{tabular}
+\caption{ROC results for setting \#1}
+\label{table:roc_1_results}
+\end{table}
+
+Inspecting the results in \cref{table:roc_1_results}, we see the clear advantage of Transformer-based methods over RNN/CNN methods. The baseline model easily achieves comparable performance to the best model (H-CVAE). The cycle framework improves over the baseline in terms of generating more token overlap with reference stories (shown by BLEU score), and more diverse and vivid texts (shown by \textsc{distinct}-n score). We also see the cycle with differentiable sampling improving over the baseline perplexity-wise indicating the ease of modeling test data. We note that we report here the best cycle direction ($\text{Cycle}_{\textsc{comp}}$) since it outperformed the other in most -- if not all -- the metrics.
+
+In \cref{table:roc_2_results}, we show the results for the second setting (see \cref{tab:roc-samples}) of ROC stories, which we recall from \cref{tab:roc-samples}, considers title+first sentence as the input to the model.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{l|rr|r|r}
+Model & B-1 $\uparrow$ & B-2 $\uparrow$ & D-4 $\uparrow$ & PPL $\downarrow$  \\ \hline
+%StyleBART & 33.8 & 17.1 & - & 11.29 \\
+HINT & 33.4 & 15.4 & \textbf{69.3} & \textbf{9.2} \\ \hline
+Baseline & 35.26 & 18.26 & 58.1 & 11.107 \\
+Cycle & \textbf{37.3} & \textbf{20.48} & 67.9 & 11.075 \\
+Cycle-GS & 33.79 & 17.1 & 47.6 & 11.743
+\end{tabular}
+\caption{ROC results for setting \#2}
+\label{table:roc_2_results}
+\end{table}
+
+As for \cref{table:roc_2_results}, the task in this setting is easier, provided that the model is fed a richer input. Indeed, we see more improvement gaps when it comes to the BLEU score over other SOTA models. Although the cycle improves text diversity over the baseline considerably, there is still room for improvement. As explained earlier this can be attributed to the objective function of optimizing the likelihood of the outputs which generally benefits metrics like BLEU but can hurt text diversity metrics. This can be approached by using the Maximum Mutual Information as suggested by \citep{li2015diversity} to bias to outputs that are specific to the inputs.
+
+For the perplexity, we now see that the vanilla cycle offers a marginal improvement while the differentiable sampling extension is actually not better -- suggesting that the stochasticity introduced by the Gumbel-softmax sampling is unstable and does not always offer better performance. Nevertheless, we expect HINT to have better perplexity since it was pretrained on BookCorpus \citep{zhu2015aligning} before being finetuned on ROC. 
+
+%All models score negatively in semantics relatedness to the references (shown by BLEURT). This shows that the extra signals leveraged by the cycle model (and its extension) are not enough to convey semantics and that some extra external signals are needed to guide the model.
+
+\subsection{Writing Prompts Results}
+\label{sec:wp_results}
+
+We report the results for the first setting of WP, which we recall from \cref{tab:wp-statistics} trains on stories of 1024 tokens in length, to analyze the effect of long training examples. In this experiment (\cref{table:wp_1_results}), \citep{fan2018hierarchical} report only the perplexity.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{l|rr|rr|r}
+Model & B-1 $\uparrow$ & B-2 $\uparrow$ & D-1 $\uparrow$ & D-2 $\uparrow$ & PPL $\downarrow$  \\ \hline
+Hierarchical & - & - & - & - & 36.56 \\ \hline
+Baseline & 28.15 & 12.83 & 1.1 & 6.5  & \textbf{21.24} \\
+$\text{Cycle}_{\textsc{exp}}$ & 28.61 & 13.61 & 1.0 & 6.9 & 21.65 \\
+$\text{Cycle}_{\textsc{exp}}$-GS & 28.48 & 12.92 & \textbf{1.6} & \textbf{10.3} & 21.97 \\
+$\text{Cycle}_{\textsc{comp}}$ & \textbf{31.19} & \textbf{13.8} & 1.0 & 6.0 & 22.243 \\
+$\text{Cycle}_{\textsc{comp}}$-GS & 28.37 & 12.92 & 1.4 & 8.9 & 22.04
+\end{tabular}
+\caption{WP results for setting \#1}
+\label{table:wp_1_results}
+\end{table}
+
+In \cref{table:wp_1_results}, we discuss the results of training the cycle on longer training examples -- but still testing them on short stories. We can observe how the cycle improved both text overlap and text diversity metrics over the baseline. However, in this case we notice a different behavior where ($\text{Cycle}_{\textsc{comp}}$) has better BLEU scores and ($\text{Cycle}_{\textsc{exp}}$) has better diversity scores. This would indicate that different directions extract different training signals, which can have varying effects on the training procedure. We also notice that unlike for ROC, the Gumbel-softmax extension here has a positive effect on diversity. This might be because that the differentiable sampling procedure works better for longer sequences. The perplexity results are, however, intriguing. It was expected that since the cycle helped improve both overlap and diversity metrics that the perplexity would follow -- which is not the case. The reason behind this is not clear and needs more investigation.
+
+In \cref{table:wp_2_results}, we show the results for the second setting for WP, which we recall from \cref{tab:wp-statistics}, limits the story to the first ten sentences.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{l|rr|r|r}
+Model & B-1 $\uparrow$ & B-2 $\uparrow$ & D-4 $\uparrow$ & PPL $\downarrow$  \\ \hline
+HINT & 22.4 & 8.4 & 31.3 & 32.73 \\ \hline
+
+ & \multicolumn{4}{c}{\textbf{30K stories}} \\ \hline
+Baseline & 23.92 & 9.68 & 48.0  & 43.02 \\
+$\text{Cycle}_{\textsc{exp}}$ & 22.41 & 8.9 & 61.4 & 43.25 \\
+$\text{Cycle}_{\textsc{comp}}$ & 23.0 & 9.33 & 47.4 & 43.16 \\ \hline
+
+ & \multicolumn{4}{c}{\textbf{100K stories}} \\ \hline
+Baseline & 26.22 & 10.52 & 32.7  & \textbf{40.05} \\
+$\text{Cycle}_{\textsc{exp}}$ & 27.3 & 10.84 & \textbf{47.0} & 42.51 \\
+$\text{Cycle}_{\textsc{exp}}$-GS & 28.39 & 11.3 & 45.4 & 42.57 \\
+$\text{Cycle}_{\textsc{comp}}$ & \textbf{29.63} & \textbf{11.79} & 40.8 & 42.22 \\
+$\text{Cycle}_{\textsc{comp}}$-GS & 26.89 & 10.69 & 45.4 & 44.06
+\end{tabular}
+\caption{WP results for setting \#2}
+\label{table:wp_2_results}
+\end{table}
+
+In the second setup (\cref{table:wp_2_results}) we follow the parameters set by \citep{guan2021long} to obtain comparable results. We use $\sim$30K stories to finetune our models, however, we directly notice that the models are overfitting the training data. We hypothesize that it is difficult for the model to train on longer sentences with fewer instances (compared to ROC). Additionally, \citep{guan2021long} pretrained their model on BookCorpus before finetuning it on the $\sim$30K (10\%) stories from WP. Due to these reasons, we increase our dataset to use $\sim$100K (33\%) random stories from WP and still follow the rest of the parameters.
+
+We obtain similar observations where ($\text{Cycle}_{\textsc{comp}}$) has better BLEU scores and ($\text{Cycle}_{\textsc{exp}}$) has better diversity scores. And with similar perplexity behavior, we attribute these findings to the bigger size of the dataset in terms of both summary and story lengths (compared to ROC). It would appear that in $\text{Cycle}_{\textsc{comp}}$ the story generators tries to produce as much token overlap as possible so that the summarizer can successfully reconstruct the summary again. However, when it is used in the other direction, the story generator has more freedom over the story and generates stories with more vivid text.
+
+%The results obtained by semantics metric (BLEURT) would confirm the findings in ROC that extra signals are required to help the models generate more semantically relevant stories. We notice that since the stories are bigger, the semantic divergence from the references is also more than that of ROC. This would attest to the fact that there are no implied semantic signals learned by the cycle framework solely.
+
+
+% =================================================================================================
+
+\section{Qualitative Analysis}
+
+In this section, we study some cases of generated stories by different models. In the first example (\cref{tab:comp-sample-1}), we see a sample from ROC -- with the gold summary (input), gold story (output), and generated stories by the baseline and cycle models.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{p{0.2\linewidth} | p{0.7\linewidth}}
+Gold Summary (input)  & Steve's Award. Steve got a call from his boss. \\ \hline
+Gold Story & He said that Steve was getting an award. He entered the conference room to applause. He accepted the award humbly. Steve was proud of his accomplishment. \\ \hline
+Generated Story (Baseline) & He was given a big award for his hard work. Steve was so proud of himself. \textcolor{red}{He took the award home and presented it to his boss.} Steve's boss was very proud of him. \\ \hline
+Generated Story (Cycle) & Steve's boss told him he was going to award him a prize. Steve accepted the award. Steve was very excited. Steve's boss thanked him for his hard work.
+\end{tabular}
+\caption{Generated stories by different models for the same input (1)}
+\label{tab:comp-sample-1}
+\end{table}
+
+For the story generated by the baseline, we see a case of reverse semantics where the employee gives an award to his boss (sentence highlighted in red). This is not the intended meaning (seen in the gold story). We see that the cycle could correctly capture the semantics in this example and produce a coherent story.
+
+In the second example (\cref{tab:comp-sample-2}), we see that the two cycle directions produce semantically different results. The $\text{Cycle}_{\textsc{exp}}$ model failed to understand the global semantics of the story, thus producing an irrelevant story. This problem is not propagated by the other cycle model, confirming that the signals extracted by the two directions are different.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{p{0.2\linewidth} | p{0.7\linewidth}}
+Gold Summary (input)  & Nicole's Boyfriend Nicole did not have a serious boyfriend. \\ \hline
+Gold Story & She went on many dates but was not committed. She was at a bar one night and met a man she was interested in. They began dating. Nicole just got engaged to be married. \\ \hline
+Generated Story ($\text{Cycle}_{\textsc{exp}}$) & Nicole did not have a boyfriend. Nicole decided to get a job. Nicole applied for a job at a restaurant. Nicole got a job as a waitress. \\ \hline
+Generated Story ($\text{Cycle}_{\textsc{comp}}$) & Nicole decided to go out with her friends. Nicole met a guy at a bar. Nicole fell in love with the guy. Nicole and her boyfriend are now married.
+\end{tabular}
+\caption{Generated stories by different models for the same input (2)}
+\label{tab:comp-sample-2}
+\end{table}
+
+In the third example (\cref{tab:comp-sample-3}), we notice that none of the models correctly understand the meaning of the word ``wake''. The intended meaning is ``a vigil held over a corpse the night before burial'' \footnote{All definitions in this paragraph are according to WordNet.} which means the death of someone and the feeling of sadness for the relatives and close people. Instead, we see two of the models understood the verbal meaning of ``to stop sleeping'', and the other could not convey the sentiment correctly. We argue that this is a hard example and more relevant information needed to be passed to the models.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{p{0.2\linewidth} | p{0.7\linewidth}}
+Gold Summary (input)  & Wake. Anette put on a wake for her grandmother. \\ \hline
+Gold Story & Her grandmother had passed away the previous week. Anette put together a playlist of her grandma's favorite songs. They were all upbeat rock \& roll tunes. Anette cried as she danced. \\ \hline
+Generated Story (Baseline) & \textcolor{red}{She was very nervous to wake her grandmother.} But she was determined to make her grandmother feel better. She put on her grandmother's favorite song. Her grandmother was so happy to see Anette again! \\ \hline
+Generated Story ($\text{Cycle}_{\textsc{exp}}$) & She put the wake in her grandmother's bedroom. Anette went to the kitchen to make breakfast. She made pancakes for her grandmother. \textcolor{red}{Her grandmother thanked Anette for the wake.} \\ \hline
+Generated Story ($\text{Cycle}_{\textsc{comp}}$) & She was very nervous about it. \textcolor{red}{But when she woke up, she was relieved.} Her grandmother had passed away. Anette was glad she had put on a wake for her.
+\end{tabular}
+\caption{Generated stories by different models for the same input (3)}
+\label{tab:comp-sample-3}
+\end{table}
+

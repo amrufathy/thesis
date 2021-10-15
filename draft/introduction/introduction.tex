@@ -1,0 +1,71 @@
+\chapter{Introduction}
+\label{ch:introduction}
+
+%You can't write a good introduction until you know what the body of the paper says. Consider writing the introductory section(s) after you have completed the rest of the paper, rather than before.
+%Be sure to include a hook at the beginning of the introduction. This is a statement of something sufficiently interesting to motivate your reader to read the rest of the paper, it is an important/interesting scientific problem that your paper either solves or addresses. You should draw the reader in and make them want to read the rest of the paper.
+
+%The next paragraphs in the introduction should cite previous research in this area. It should cite those who had the idea or ideas first, and should also cite those who have done the most recent and relevant work. You should then go on to explain why more work was necessary (your work, of course.)
+ 
+%What else belongs in the introductory section(s) of your paper? 
+%A statement of the goal of the paper: why the study was undertaken, or why the paper was written. Do not repeat the abstract. 
+%Sufficient background information to allow the reader to understand the context and significance of the question you are trying to address. 
+%Proper acknowledgement of the previous work on which you are building. Sufficient references such that a reader could, by going to the library, achieve a sophisticated understanding of the context and significance of the question.
+%The introduction should be focused on the thesis question(s).  All cited work should be directly relevent to the goals of the thesis.  This is not a place to summarize everything you have ever read on a subject.
+%Explain the scope of your work, what will and will not be included. 
+%A verbal "road map" or verbal "table of contents" guiding the reader to what lies ahead. 
+%Is it obvious where introductory material ("old stuff") ends and your contribution ("new stuff") begins? 
+%Remember that this is not a review paper. We are looking for original work and interpretation/analysis by you. Break up the introduction section into logical segments by using subheads. 
+
+%What is storytelling/generation (done)
+%Its applications 
+%Shortly what other approaches do 
+%Where do existing approaches still struggle
+%What we propose
+%Contributions’ list
+
+
+Storytelling is the act of telling or writing stories or narratives. Stories have long been a fundamental medium for information exchange, entertainment, learning, and teaching. Telling stories is a universal human experience since ancient times. Ancient cultures shared folklores, epics, legends, and myths through generations of oral storytelling. The goal of a good narrative is not only to create a mental image of some events but a way of understanding what we see and perceive \citep{welsch1998history}.
+
+One of the oldest accounts of storytelling is the visual representations found in the Chauvet cave over 30,000 years ago \citep{clottes2003chauvet}. Media of storytelling have widely changed over time, be that as it may, humans always have been consumers of stories. Today, with the wide use of computers, stories can be printed on paper, shared on blogs and social media, or even recorded via images, audio clips, and videos.
+
+It is no wonder that Artificial Intelligence (AI) scientists were drawn to study how to make creative programs that could tell stories. The question about computational creativity is not limited to story generation, but any activity that would be deemed creative by humans \citep{colton2009computational}.
+
+There is no universal definition for the task of Automated Story Generation. We define it as ``using creative AI-based systems to produce coherent and fluent passages of text about a topic'' as defined by \citep{fan2018hierarchical}. Concretely, the goal is to generate a correlated -- temporally and logically -- chain of events and build the in-between connections using a fluent narrative.
+
+Automated Story Generation is considered a problem of Natural Language Generation (NLG). NLG is a software process that consumes inputs -- if any -- and produces human-readable text. Some NLG tasks like machine translation and text segmentation might be considered to be less difficult than story generation. The reason behind this is that to generate a story, a model is required to keep track of concepts, previous experiences, events, characters with their goals and actions, locations, and even more -- all of that while also being able to generate coherent, diverse, and fluent text.
+
+Automatic story generators can prove useful in many applications. They can be used in virtual agents and chatbots to create a sense of rapport with human users through story-like conversations. In education, interactive story generators have been used to help children collaboratively generate a story \citep{robertson2003using} or even evaluate the quality of story writing attempts by students \citep{halpin2004towards}. Professionally, interactive story generators were used to elicit new ideas for writers \citep{clark2018creative}. In the field of entertainment, many solutions address the problem of procedural narrative generation for video games \citep{griffith2018procedural}. \citep{martin2021neurosymbolic} claims that story generators can be used by criminal investigators to hypothesize about different criminal scenarios.
+
+Early methods for automatic story generation used a combination of hand-crafted grammar rules \citep{ryan2017grimes, rumelhart1975notes, thorndyke1977cognitive, wilensky1983story} and classical planning techniques \citep{meehan1977tale, dehn1981story, lebowitz1984creating, lebowitz1985story, cavazza2002character, porteous2009controlling, riedl2010narrative} to automatically generate stories. However, these methods suffer from unoriginality and being constricted to a limited domain, could not model logical relationships between events and entities to a certain extent, need massive amounts of knowledge bases, and could not search a large domain of possible scenarios/cases.
+
+Recently, recurrent neural architectures dominated many NLP tasks including story generation. With the introduction of sequence-to-sequence models (\cref{sec:seq2seq}) and attention mechanisms (\cref{sec:attention}), many tasks witnessed a great deal of improvement with story generation being one of them. Researchers based their approaches on recurrent-based language models (LMs) \citep{choi2016recurrent, harrison2017toward}. Some extended the idea to use a hierarchical generation approach to better model the semantic dependencies between the story's events \citep{martin2018event, xu2018skeleton, fan2018hierarchical}. Others adapt experiences shared by human writers to computational methods \citep{yao2019plan, yu2020draft}. We also see works that focus on visual storytelling \citep{huang2016visual, wang2018no, kim2018glac}, and works that build interactive storytelling systems to improve human engagement and stimulate new ideas for writers \citep{clark2018creative, goldfarb2019plan}.
+
+One of the common problems encountered by RNN-based generation models is their inability to maintain long-term dependencies. Although they provide an improvement over planning methods, RNN methods still struggle to be consistent after a small number of sentences. Generating coherent text is also a problem. Some methods still can not fully ``understand'' and maintain logical relationships between events which leads to an unreasonable story. Additionally, RNN models are known to generate repeated text either copied from input distribution or sampled again and again from the output distribution \citep{herrera2020automatic}.
+
+More recently, with the introduction of Transformer models \citep{vaswani2017attention}, many of the problems of RNN networks were addressed. Transformers can process longer sequences with a high ability to manage long-term dependencies thanks to their self-attention mechanism. They can also produce more coherent text with less repetition. This led researchers to augment the story generation task with extra tasks to help Transformers overcome a specific problem when it comes to generation. Some focused on modeling emotions while generating the story \citep{brahman2020modeling, kong2021stylized}, others improved the diversity by ordering permuted sentences \citep{yu2021sentence}, and an effort was made to model sentence-level and discourse-level coherence \citep{guan2021long}. Although Transformers improved a lot over RNNs, they still suffer from the same basic problems, like modeling logical relationships, and interconnecting events and characters to produce a coherent story.
+
+In our work, we propose to use a Transformer foundation model \citep{bommasani2021opportunities} in a cycle-consistency framework. Cycle-consistency loss was popularized as a method to optimize Generative Adversarial Networks (GANs) to perform image-to-image translation in the absence of parallel data \citep{zhu2017unpaired}. Given a source domain $X$ and a target domain $Y$, the goal was to learn a mapping $G \colon X \mapsto Y$, or an inverse mapping $F \colon Y \mapsto X$ coupled with a cycle-	consistency loss $F(G(X)) \approx X$ (and vice versa). This method was also used in language translation to verify and improve translations by humans \citep{brislin1970back} and machines \citep{he2016dual} where it is known as ``back translation''.
+
+We define consistency in our case as the generated story being semantically consistent with the human story. Our two domains are textual summaries and stories, and we use a foundation model (e.g., BART \citep{lewis2019bart} or T5 \citep{raffel2019exploring}) to learn the mappings. The main research question of this thesis is:
+
+\begin{quote}
+\textit{Can the extra training signals obtained from exploiting the dual tasks of text summarization and generation, in a cycle consistency framework, be utilized to improve the performance of said tasks?} \footnote{In this thesis we focus on the story generation task and leave the summarization task for future work.}
+\end{quote}
+
+We propose a simple modification -- compared to other works -- of placing a foundation model in a cycle consistency framework and then study how that affects the process of story generation. We follow \citep{hou2019survey} and analyze the generated stories according to their consistency, coherence, and diversity.
+
+A story is \textit{consistent} if it adheres to the same theme along the generation process. We attempt to measure that by the lexical token overlap between the generated and reference story using the BLEU score (\cref{sec:bleu}). \textit{Coherence} of a story relates to the logical relationships between events and sentence order. We study this criterion by measuring the perplexity (\cref{sec:perplexity}) of the generation model to test its ability to model the test data. %and make use of BLEURT (\cref{sec:bleurt}) which is a learned metric that takes into account the semantics of the generated text to quantify its quality. 
+Finally, \textit{diversity} is the ability of the model to generate text with better and more vivid meaning, rather than just choosing words with high frequency. We use a metric called \textsc{distinct}-n (\cref{sec:diversity}) to measure the percentage of unique words in the corpus.
+
+In this thesis, we make the following contributions:
+
+\begin{enumerate}
+\item We cast the story generation task from a seq2seq task, into a new formulation where a model generates an intermediate output $\mathbf{y}$ which is further enhanced by the signals of a second model, which is tasked to reconstruct the input $\mathbf{x}$ starting from the previously generated text $\mathbf{y}$.
+
+\item We propose a cycle-consistency-based model, $\textbf{Cycle}_{\textsc{gen}}$, which aims to improve the task of story generation through exploiting extra training signals.
+
+\item We report empirical results on two datasets (ROC Stories and Writing Prompts) that are widely used in the literature. We show that using the cycle model attains higher or comparative results with respect to other models, thus proving the effectiveness of our approach.
+\end{enumerate}
+
+The rest of this thesis is organized as follows: In \cref{ch:background}, we discuss the basic terminology, deep learning algorithms, and natural language processing (NLP) techniques. In \cref{ch:related_work}, we explain, in detail, how previous works approached the story generation problem, where they come short, and how we differ. \cref{ch:main_idea} is dedicated to explaining how the cycle consistency framework is applied and other details that we propose. \cref{ch:evaluation} displays different experimental settings, discusses metrics, and shows empirical results followed by an analysis. Finally, we conclude and lay out further extensions to our work.
+

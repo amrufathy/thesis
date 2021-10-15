@@ -1,0 +1,12 @@
+\chapter{Conclusion}
+\label{ch:conclusion}
+
+In this thesis, we present the cycle-consistency framework to the story generation task. To the best of our knowledge, this was the first attempt to do so. We provide a clear and intuitive new formulation for the story generation problem, that is easily understood and extendable.
+
+Previously, the problem was perceived as a conditional generation problem where given an input sequence (summary) the model was required to output a story. Instead, we propose to generate first an intermediate text that is further improved by signals obtained from an input-reconstruction task, through the use of two models.
+
+In addition, we experiment with two sampling methods; greedy sampling and Gumbel-softmax sampling. With greedy sampling, the two models are trained separately and combined only by the intermediate text, while using Gumbel-softmax sampling, makes the whole cycle fully differentiable which allows for better gradient-based optimization.
+
+We prove that this formalization improves over others in several metrics. We show that the cycle model can extract meaningful signals that help with generating text with higher diversity and overlap with reference texts.
+
+As future work, we intend to experiment with new external signals to guide the cycle model. We plan on introducing a semantic similarity signal which serves the purpose of making the generated story more semantically related to the reference. We also plan on using commonsense knowledge bases to improve the logical coherency of the generated text.

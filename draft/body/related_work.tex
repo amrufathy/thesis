@@ -1,0 +1,140 @@
+\chapter{Related Work}
+\label{ch:related_work}
+
+% https://mark-riedl.medium.com/an-introduction-to-ai-story-generation-7f99a450f615
+
+% grammar based approaches
+In cognitive science, story grammars view stories as scripts -- structures that describe a sequence of events in a particular context \citep{schank2013scripts}. This comes from the fact that in most situations, events usually occur in stereotypical patterns. These patterns are used as schemas or grammars to guide story generation. Structured story generation is to automatically generate stories by dividing the stories into slots following a given schema. Slots are then filled by selecting similar plots from previously annotated stories \citep{alhussain2021automatic}.
+
+Propp's model was one of the earliest to formalize stories into structural models \citep{propp1968morphology}. Propp studied hundreds of Russian folktales and concluded that they follow a similar global structure. He extracted 31 functions (character actions) of which a subset is sure to drive any given story.
+
+Inspired by Propp's analysis, JE Grimes pioneered the field of automated story generation in the early 1960s. Grimes used the Monte Carlo approach to randomly sample a subset of Propp's functions and order them based on a set of intelligent grammar rules to build a story as seen in \cref{tab:grimes-story-sample} \citep{ryan2017grimes}. Back then story generators were non-learning rule-based systems that focused on the quality of a certain aspect (e.g., syntax or plot...). In the 1970s and 1980s, several researchers published story grammars which are necessary for story understanding and generation \citep{rumelhart1975notes, thorndyke1977cognitive, wilensky1983story}.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{p{0.9\linewidth}}
+\hline
+\uppercase{A lion has been in trouble for a long time. A dog steals something that belongs to the lion. The hero, lion, kills the villain, dog, without a fight. The hero, lion, thus is able to get his possession back.} \\ 
+\hline
+\end{tabular}
+\caption{One of the first computer-generated stories by JE Grimes}
+\label{tab:grimes-story-sample}
+\end{table}
+
+Nevertheless, grammar-based approaches focus only on the syntax of the story rather than the semantics. Logical relationships between story events and character goals are ignored which affects the story coherence and believability \citep{alhussain2021automatic}. Also, structural models are restricted to a certain domain and cannot modify their knowledge rules to generate different stories.
+
+% planning based approaches
+The realization that story generation is a \textit{creativity} problem begged the usage of more intelligent techniques. Story planners assume that narrative generation is a goal-driven process and apply a symbolic planner to generate a story. In this context, a story is viewed as a chain of causally related events (story points) that satisfy an end goal. Such systems are restricted to solve a theme and can easily delimit the path followed to generate a story \citep{herrera2020automatic}.
+
+The first widely-known system to use a planner is TALE-SPIN \citep{meehan1977tale}. This system generates different characters with their respective goals and proceeds to find a resolution of these goals using an inference engine based on common sense reasoning theories. TALE-SPIN showed a substantial improvement over Grimes' fairy tales system, thanks to the ``reasoning'' capability provided by the inference engine.
+
+Thanks to Meehan's work in TALE-SPIN and the modern formalization of symbolic planning in predicate logic, many works that use planners for story generation in different approaches came to be \citep{dehn1981story, lebowitz1984creating, lebowitz1985story, cavazza2002character, porteous2009controlling, riedl2010narrative}. However, many stories generated using planners had an inherent problem; each step depends only on the current state of the story and not past states.
+
+% case/analogy based approaches
+Drawing from cognitive theories, computational analogy identifies similarities and transfers knowledge from a source domain to a target domain \citep{zhu2013shall}. This approach is applied in story generation systems by searching the knowledge bases for a story world state similar to the current story world, then the next state in the knowledge base would be the new state for the generated story. The similarity measure would depend, in this context, on the generation system.
+
+MINSTREL \citep{turner1993minstrel} is one the earliest analogy-based generators. It is driven by character and author goals where case-based reasoning is used to resolve the goals. The system stores the cases in its memory and indexes them by important features such as locations and actions to group related cases. The system then adapts these cases/scenes through a model of computational creativity to ensure novelty. Similarly, MEXICA \citep{perez2001mexica} uses a method of engagement and reflection, to use already known narratives and generate a new story that maintains coherence, novelty, and an increasing tension throughout the story.
+
+% heuristic search approaches
+To increase the variety of generated stories, the stories search domain needs to be expanded. However, as the search space increases, it becomes more difficult for planners to find a solution. Heuristic search techniques were used to find a story in a story search space. HEFTI \citep{ong2004genetic} and PlotGA \citep{mcintyre2010plot} use Genetic Algorithms to search for plot points and then generate a narrative. \citep{cavazza2009emotional} use real-time A* for story generation in an interactive setting.
+
+% transition to ML
+With the recent boom in learning algorithms and hardware capabilities, the focus started to shift from symbolic rule-based systems to learnable generation techniques. Machine Learning (ML) methods can be used for knowledge acquisition, in contrast to non-learning systems which need prior encoding of schemas and scenarios. Most ML systems, in the context of story generation, attempt to model, probabilistically, the process of writing a story in some way. After a probability distribution is learned, the model is then able to sample from this learned distribution to generate a new story.
+
+Different works classify recent story generation systems according to different criteria. \citep{hou2019survey} use the constraints applied to the generation process to separate systems. \citep{herrera2020automatic} survey different systems according to the type of guideline used to generate the story. \citep{alhussain2021automatic} differentiate between required tasks in the domain of story generation; filling the gaps, ending completion, and from-scratch generation.
+
+We use Hou's system of classification which organizes story generators into theme-oriented models, storyline-oriented models, and human-machine interaction-oriented models \citep{hou2019survey}. Theme-Oriented models are characterized by a consistent theme throughout the whole generation process. Storyline-Oriented models are constrained by complete story plots to guide the generation. Story plots are forms of abstract descriptions of the development of the storyline, and can also be in the form of a given story that needs a suitable ending. Finally, Human-Machine Interaction-Oriented models are dynamic with user input guiding the generation process.
+
+
+% =================================================================================================
+
+\section{Theme-Oriented Models}
+\label{sec:theme_models}
+
+Theme-oriented models refer to models in which the user constraint is static and gives a high-level description of the story's topic/theme. This type of models has the highest degree of flexibility and weakest constraints on the generation process which results in a difficulty of generating consistent, coherent, and vivid stories \citep{hou2019survey}. In this section, we review some of the methods that follow this paradigm.
+
+\citep{choi2016recurrent} use two RNN encoder-decoder LMs to generate a story. The first network maps an input sentence to a vector representation, while the second network decodes this representation to generate the next sentence in the story. \citep{harrison2017toward} modeled the chain of story events as a Markov Chain and used an RNN to guide a Markov Chain Monte Carlo (MCMC) sampler to generate new stories. RNN-based LMs proved their ability to generate grammatically correct sentences, however, generated stories lacked overall coherence.
+
+\citep{martin2018event} adopted the idea of hierarchically generating the story to improve long-term dependency and global coherence. Martin separated the task into two phases; first generate a sequence of events that outlines the progression of the story, then generate a narrative describing the relationships between the events. An event is a 4-tuple $\langle s, v, o, m \rangle$, where $v$ is a verb, with $s, o$ its subject and object respectively, and $m$ is a wildcard which represents a dependency of some kind. To generate the sequence of events, an encoder-decoder network is used with a greedy decoding mechanism. To reconstruct human-readable sentences from the intermediate sequence of events, another encoder-decoder network is used with a beam search decoder to find optimal sentences. 
+
+\citep{xu2018skeleton} draw inspiration from classical schema-based methods and generate a skeleton -- the most critical phrases that reflect the semantic connections between sentences. The skeleton is then further expanded into complete sentences. LSTM-based encoder-decoder networks (with attention decoders) are used for both phases; generating the skeleton from the input, and expanding the skeleton into a fluent story. However, unlike classical methods, skeleton extraction is trained using a reinforcement learning (RL) method to preserve only key information necessary to create a story. The skeleton model show improved coherence and story fluency.
+
+Similarly, \citep{fan2018hierarchical} use a two-step process to generate stories. First, they generate a premise describing the topic of the story then they condition the story generation on this premise. To generate the conditioning prompt, they build on top of the ConvS2S \citep{gehring2017convolutional} LM with a novel gated multi-scale self-attention mechanism to attend to different positions and be able to make better fine-grained selections. Next, to improve the dependency on the conditioning prompt, they use a fusion model -- where a seq2seq network has access to the weights of a pretrained seq2seq network. The goal is for the second network to improve where the first network failed to learn.
+
+\citep{yao2019plan} propose to dynamically generate the story plan adopting experiences from many human writers. Instead of generating the whole plan first then moving on to the story, they generate the plot point and then the corresponding sentence in the story -- thus interleaving the plan and story generation one step at a time.
+
+\citep{yu2020draft} use a modified conditional variational autoencoder (CVAE) in a multi-pass editing scheme to generate a story. The architecture uses a GRU-based encoder with a hierarchical decoder consisting of a global-level decoder responsible for guiding local-level decoders into generating story sentences. They use two CVAEs; the first generates a draft of the story based on the title, then the second consumes both the title and the generated draft to produce the final story. This scheme allows the second CVAE to focus on overall semantic consistency and coherence.
+
+Many other works adopt this hierarchical generation framework \citep{ammanabrolu2019guided, fan2019strategies, zhai2019hybrid, ammanabrolu2020story}. The reason for the wide adoption of this framework is the ability to model the relationship between plot points at a higher level than words and maintain long-term dependencies yielding improved results over standard seq2seq models in terms of global coherence and semantic consistency.
+
+%Since the introduction, the inherent architecture could already provide many of the benefits of using a hierarchical generation approach. That motivated researchers to another formulation of the approach. Instead of generating an abstract representation of the story, they would instead feed this abstract representation as supplementary input to 
+
+The recent success of Transformer models motivated researchers to pursue more complex enhancements to improve the generation process.
+
+\citep{brahman2020modeling} use COMET -- a knowledge base -- to identify the emotional reaction of the main character in each sentence, and then use this ``emotional arc'' to guide the generation. To correctly classify an emotion, they use a pretrained BERT model then finetune it on an emotion identification dataset then further finetune it on an emotion annotated (using COMET) story dataset. Next, they use this classifier loss to optimize the model (GPT-2) to continually align to the emotional arc using a reinforcement learning policy.
+
+\citep{kong2021stylized} use a similar approach where they use stylistic keywords as a higher-level representation for the story. They first learn the probability distribution for the stylistic keywords through an encoder and then use this distribution directly to condition the decoder while generation. The types of styles they consider are emotion-driven and event-driven styles. To extract emotion labels they make use of a lexical tool (NRCLex) and for the event labels, they use NLTK to extract non-common verbs. Finally, to guide the model during generation, they explicitly add a token that signifies the type of style the story should follow.
+
+% maybe move this to another models section
+\citep{yu2021sentence} aim to improve the diversity of output text by permuting the sentence order. Their method, PermGen, maximizes the expected log-likelihood of output paragraph distributions with respect to all possible sentence orders. To do so, they use three modules; (1) hierarchical positional embedding, which keeps track of the token's position in the sentence and in the paragraph, (2) sentence-permuted learning, which maximizes the log-likelihood of generating every possible paragraph permutation, and (3) sentence based decoding, which generates the sentences out of order then proceeds to order them according to their rank with log-probability.
+
+\citep{guan2021long} propose two additional pretraining tasks in addition to the language modeling task. The first task is a sentence similarity task where the model learns sentence-level representations to minimize a similarity score using SentenceBERT as a reference. The second task is a sentence ordering task where the model learns discourse-level representation to correctly determine whether two sentences are in order. Coupled with negative sampling, the goal for these extra tasks is to allow the model to effectively capture the high-level semantics and discourse structures in the context.
+
+
+% =================================================================================================
+
+\section{Storyline-Oriented Models}
+\label{sec:storyline_models}
+
+Storyline-oriented models are still characterized by a static user constraint, but in this case, the constraint directly describes plot points which are then used to generate the story. Conceptually, this type of models resembles the second part/phase of theme-oriented models (\cref{sec:theme_models}) where the input is a high-level representation of the plot points and the semantic connections between them.
+
+\citep{huang2016visual} introduced the first dataset for visual storytelling (VIST). They present sets of pictures in sequences coupled with text captions that describe the pictures.
+
+\citep{wang2018no} use an adversarial reward learning framework on VIST to learn an implicit reward function from human experience, and then use this learned function to optimize the generation policy. In their architecture they make use of two models; a policy model that takes an image sequence and takes a sequence of actions (choosing words for the story), and a reward model that computes partial fine-grained rewards for each sentence representation along with the visual features learned from the input image.
+
+\citep{kim2018glac} propose an attention-based approach to encode information between adjacent pictures in VIST. They use a global-local attention mechanism where the global attention focuses on overall semantic correlations while local attentions focus on extracting information from images to generate the story. To output sampled sentences, they use a custom decoding scheme where the probability of sampling a new word is inversely related to its frequency. This prevents repetitive text and insures diversity of generated stories.
+
+Another method to encode storylines is in the form of some intermediate semantic representation. This representation can be a set of abstract sentences or event representations. The need to encode in some abstract representation arises from the fact that stories in their textual form contain many insignificant details and add extra overhead for the learning process. 
+
+\citep{martin2018event} use a 4-tuple to represent an event (discussed in \cref{sec:theme_models}). \citep{mostafazadeh2016caters} make use of a novel annotation framework to simultaneously capture temporal and causal relations between events. \citep{jain2017story} use a set of independent event descriptions to generate coherent stories. \citep{yao2019plan} create a story abstraction by extracting each sentence's most important word.
+
+We add the task of predicting/generating an ending for a story in this section since it requires an understanding of the storyline up to that point. \citep{zhao2018plots} use RL to generate story endings that have high semantic relevance with story plots by applying a copy and coverage mechanism. \citep{hu2017happens} uses a context-aware LSTM to capture the temporal order of past sub-events and generate a prediction of a future sub-event. \citep{guan2019story} argue that generating a rational ending for a story is an indicator of story comprehension since it requires understanding key storyline points and inherent commonsense knowledge.
+
+
+% =================================================================================================
+
+\section{Human-Machine Interaction-Oriented Models}
+\label{sec:interaction_models}
+
+This class of models deals with a dynamic user constraint. The input constraints vary with human interaction and the problem is cast more as an interaction problem rather than an algorithmic one.
+
+\citep{clark2018creative} studied a machine-in-the-loop story generation framework where an LM suggests new sentences to stimulate ideas for the writer. They conclude that participants appreciated creative and diverse suggestions more than random less meaningful ones. \citep{goldfarb2019plan} use different varieties of interaction to improve human engagement. In their system, writers can outline the plot of the story, control the diversity of generated plots and story sentences, edit and modify previously generated content. They show improved user satisfaction with creative and relevant generated content.
+
+
+% =================================================================================================
+
+\section{Other Models}
+\label{sec:other_rel_models}
+
+This section is dedicated to works that are not directly related to automated story generation but contributed to the development of this work.
+
+As discussed previously, the idea of cycle framework was used before in the context of machine-generated language translation by \citep{he2016dual}. They cast the problem as a two-agents game. The first agent (model) translates the message from language A to B and sends the translated message to the second agent. The second agent evaluates the readability of the received message (\textit{not} translation correctness) with respect to language B, translates it back to language A and retransmits it back to the first agent. The first agent then evaluates the reconstruction quality and signals the second agent for feedback. The game is then started the other way around until both models converge. They use RL policy gradient methods to optimize models on the readability of the intermediate sentence and the quality of the reconstructed sentence. Since they use RL for optimization, the training procedure is unstable, the models need pretraining to be able to converge, and the training process needs a big amount of time.
+
+\citep{baziotis2019seq} propose a text compression mechanism using an autoencoder architecture that uses differentiable approximations for text sampling which can use gradient-based optimization leading to better performance over seq2seq models. The compressor is a seq2seq with attention that adaptively determines the length of the compressed sequence. Then they use the Gumbel-softmax reparameterization trick with a straight-through estimator to sample words from the compressor's output distribution. In contrast to argmax sampling, using this sampling method allows for the backpropagation of gradients allowing a gradient-based optimization. The reconstructor is similarly a seq2seq that reconstructs the input again. However, to make the models converge they make use of multiple losses: (1) reconstruction loss, (2) prior loss, which is an LM loss that measures the readability of the compressed text, and (3) a topic loss, which is a TF-IDF based cosine similarity loss that forces the compressed text to draw words from the same distribution as the original text.
+
+
+% =================================================================================================
+
+\section{Position Of Our Framework}
+\label{sec:analysis_prev_work}
+
+The majority of the hierarchical generation methods presented in (\cref{sec:theme_models}) are either recurrent or convolutional-based models which are generally outperformed by the recently introduced Transformers. Moreover, authors of these works still report tendencies to repeated text generation, inconsistencies, incoherency, inability to adhere to the theme, produce shorter stories, copy from input prompt, and focus on and generate more frequent words.
+
+Storyline models (\cref{sec:storyline_models}) adhere too much to the inputs resulting in less generalized and original stories. They are also highly dependent on the input when it comes to generating a coherent and logically consistent story. Additionally, they exhibit some of the problems of theme-oriented models.
+
+Observing the Transformer-based approaches reviewed previously, we see that these methods use complex feature engineering that requires a considerable amount of extra computing power and/or training time. Instead, we propose a much simpler method that provides better results and is easily extendable.
+
+The dual learning algorithm \citep{he2016dual} uses an RL optimization procedure which is inefficient -- since it required a long time to train the models -- and unstable -- where pretraining was required to initialize the models. In contrast, we use a gradient-based optimization algorithm, that proves to be more efficient when training bigger models.
+
+The text compression mechanism \citep{baziotis2019seq} although efficient but still report instability -- where the topic loss is a key factor for convergence. The model also tends to copy words from the original text to the compressed text. Additionally, they report that the model weakly recovers from early errors that have cascading effects.
+
