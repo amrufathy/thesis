@@ -2,22 +2,6 @@
 \label{ch:evaluation}
 
 
-%Experimental setup
-%Datasets
-%ROC Stories
-%Writing Prompts
-%Data stats 
-%Evaluation metrics
-%BLEU
-%Distinctiveness
-%Perplexity
-%Other metrics?
-%Experiments
-%Using ROC title as input and whole story as output
-%Using ROC title + 1st sentence as input and rest of story as output
-%Writing prompts as is
-%Results
-
 In this section, we overview the datasets we use and what settings/formats they are used in (\cref{sec:datasets}). Then, we discuss the metrics used to evaluate the models (\cref{sec:eval_metrics}). Finally, we report empirical results and comment on them (\cref{sec:experiments}).
 
 \section{Datasets}
@@ -37,7 +21,7 @@ ROC contains 98,161 five-sentence short stories paired with their titles. We use
 \begin{tabular}{p{0.08\linewidth} | p{0.25\linewidth} | p{0.5\linewidth}}
 Setting & Summary  & Story \\ \hline
 \# 1 & Steve's Award. & Steve got a call from his boss. He said that Steve was getting an award. He entered the conference room to applause. He accepted the award humbly. Steve was proud of his accomplishment. \\ \hline
-      
+
 \# 2 & Steve's Award. Steve got a call from his boss. & He said that Steve was getting an award. He entered the conference room to applause. He accepted the award humbly. Steve was proud of his accomplishment. \\
 \end{tabular}
 \caption{A sample story from ROC stories%. Top is the first setting with a title-only summary. Bottom is the second setting with title+first sentence summary.
@@ -70,7 +54,7 @@ WP contains 303,358 prompt-story pairs and a prompt can have more than one story
 \centering
 \begin{tabular}{p{0.1\linewidth} | p{0.8\linewidth}}
 Summary  & The witch stole his heart, and replaced it with ice. Now he can not love, lest it melts. \\ \hline
-Story & 
+Story &
 I stare at the retreating figure of the witch who had just cursed me. I feel the cold spread from the lump of ice now in place of my heart. Did she seriously just do this so I can't love again? Love doesn't create actual heat. Don't you understand the laws of thermodynamics? I shout after her slowly fading form. I see a minute shrug as she disappears from my eyeline and give out a weak gurgle as I fall to my knees. As the floor rises to greet my face, it occurs to me that she doesn't much understand the laws of biology either. \\
 \end{tabular}
 \caption{A sample story from WP}
@@ -94,7 +78,7 @@ Setting \#2 & 28.22 & 164.85 \\
 \section{Evaluation Metrics}
 \label{sec:eval_metrics}
 
-We use a combination of automatic evaluation metrics to assess the quality of the generated stories from multiple aspects.	
+We use a combination of automatic evaluation metrics to assess the quality of the generated stories from multiple aspects.
 
 \subsection{Perplexity}
 \label{sec:perplexity}
@@ -109,18 +93,18 @@ Generally, smaller perplexity scores indicate better text fluency.
 \subsection{BLEU}
 \label{sec:bleu}
 
-Bilingual Evaluation Understudy (BLEU for short) \citep{papineni2002bleu} is a string-matching algorithm that is used for evaluating the quality of translations tasks. BLEU measures the correspondence between machine-generated translations and human-written translations.% Thus a higher BLEU score indicates a better correlation to human performance. 
+Bilingual Evaluation Understudy (BLEU for short) \citep{papineni2002bleu} is a string-matching algorithm that is used for evaluating the quality of translations tasks. BLEU measures the correspondence between machine-generated translations and human-written translations.% Thus a higher BLEU score indicates a better correlation to human performance.
 The driving idea is that the closer (more overlapping tokens) the machine translation is to the human's, the better it is.
 
 The BLEU $n$-gram precision $p_n$ is defined over a corpus $\mathcal{C}$ as follows:
 \[ p_n = \dfrac
 {\sum_{S \in \mathcal{C}} \quad \sum_{n\text{-gram} \in S} \text{Count}_\text{\textit{clip}}(n\text{-gram})}
-{\sum_{S' \in \mathcal{C}} \quad \sum_{n\text{-gram} \in S'} \text{Count}(n\text{-gram})} 
+{\sum_{S' \in \mathcal{C}} \quad \sum_{n\text{-gram} \in S'} \text{Count}(n\text{-gram})}
 \]
 where $S$ is a sentence or a segment of the corpus, and $\text{Count}_\text{\textit{clip}}$ bounds the count of an $n$-gram to the maximum count found in any single reference for that $n$-gram.
 
 The overall BLEU score is calculated as a geometric mean of the precisions penalized by some brevity penalty to account for short sentences:
-\[ \text{BLEU} = \text{BP} \,\cdot\, \exp\left\{ \sum_{i=1}^{N} w_n \log p_n \right\}, \quad 
+\[ \text{BLEU} = \text{BP} \,\cdot\, \exp\left\{ \sum_{i=1}^{N} w_n \log p_n \right\}, \quad
 \text{BP} =  \begin{cases}
 	\exp\left\{ 1 - \dfrac{|\text{ref}|} { |\text{hyp}| }\right\}, & \text{ if |ref| > |hyp| } \\
 	1, & \text{ otherwise } \\
@@ -258,7 +242,7 @@ Cycle-GS & 33.79 & 17.1 & 47.6 & 11.743
 
 As for \cref{table:roc_2_results}, the task in this setting is easier, provided that the model is fed a richer input. Indeed, we see more improvement gaps when it comes to the BLEU score over other SOTA models. Although the cycle improves text diversity over the baseline considerably, there is still room for improvement. As explained earlier this can be attributed to the objective function of optimizing the likelihood of the outputs which generally benefits metrics like BLEU but can hurt text diversity metrics. This can be approached by using the Maximum Mutual Information as suggested by \citep{li2015diversity} to bias to outputs that are specific to the inputs.
 
-For the perplexity, we now see that the vanilla cycle offers a marginal improvement while the differentiable sampling extension is actually not better -- suggesting that the stochasticity introduced by the Gumbel-softmax sampling is unstable and does not always offer better performance. Nevertheless, we expect HINT to have better perplexity since it was pretrained on BookCorpus \citep{zhu2015aligning} before being finetuned on ROC. 
+For the perplexity, we now see that the vanilla cycle offers a marginal improvement while the differentiable sampling extension is actually not better -- suggesting that the stochasticity introduced by the Gumbel-softmax sampling is unstable and does not always offer better performance. Nevertheless, we expect HINT to have better perplexity since it was pretrained on BookCorpus \citep{zhu2015aligning} before being finetuned on ROC.
 
 %All models score negatively in semantics relatedness to the references (shown by BLEURT). This shows that the extra signals leveraged by the cycle model (and its extension) are not enough to convey semantics and that some extra external signals are needed to guide the model.
 
@@ -326,14 +310,14 @@ In this section, we study some cases of generated stories by different models. I
 \begin{tabular}{p{0.2\linewidth} | p{0.7\linewidth}}
 Gold Summary (input)  & Steve's Award. Steve got a call from his boss. \\ \hline
 Gold Story & He said that Steve was getting an award. He entered the conference room to applause. He accepted the award humbly. Steve was proud of his accomplishment. \\ \hline
-Generated Story (Baseline) & He was given a big award for his hard work. Steve was so proud of himself. \textcolor{red}{He took the award home and presented it to his boss.} Steve's boss was very proud of him. \\ \hline
+Generated Story (Baseline) & He was given a big award for his hard work. Steve was so proud of himself. \textcolor{red}{\textit{He took the award home and presented it to his boss.}} Steve's boss was very proud of him. \\ \hline
 Generated Story (Cycle) & Steve's boss told him he was going to award him a prize. Steve accepted the award. Steve was very excited. Steve's boss thanked him for his hard work.
 \end{tabular}
 \caption{Generated stories by different models for the same input (1)}
 \label{tab:comp-sample-1}
 \end{table}
 
-For the story generated by the baseline, we see a case of reverse semantics where the employee gives an award to his boss (sentence highlighted in red). This is not the intended meaning (seen in the gold story). We see that the cycle could correctly capture the semantics in this example and produce a coherent story.
+For the story generated by the baseline, we see a case of reverse semantics where the employee gives an award to his boss. This is not the intended meaning (seen in the gold story). We see that the cycle could correctly capture the semantics in this example and produce a coherent story.
 
 In the second example (\cref{tab:comp-sample-2}), we see that the two cycle directions produce semantically different results. The $\text{Cycle}_{\textsc{exp}}$ model failed to understand the global semantics of the story, thus producing an irrelevant story. This problem is not propagated by the other cycle model, confirming that the signals extracted by the two directions are different.
 
@@ -356,9 +340,9 @@ In the third example (\cref{tab:comp-sample-3}), we notice that none of the mode
 \begin{tabular}{p{0.2\linewidth} | p{0.7\linewidth}}
 Gold Summary (input)  & Wake. Anette put on a wake for her grandmother. \\ \hline
 Gold Story & Her grandmother had passed away the previous week. Anette put together a playlist of her grandma's favorite songs. They were all upbeat rock \& roll tunes. Anette cried as she danced. \\ \hline
-Generated Story (Baseline) & \textcolor{red}{She was very nervous to wake her grandmother.} But she was determined to make her grandmother feel better. She put on her grandmother's favorite song. Her grandmother was so happy to see Anette again! \\ \hline
-Generated Story ($\text{Cycle}_{\textsc{exp}}$) & She put the wake in her grandmother's bedroom. Anette went to the kitchen to make breakfast. She made pancakes for her grandmother. \textcolor{red}{Her grandmother thanked Anette for the wake.} \\ \hline
-Generated Story ($\text{Cycle}_{\textsc{comp}}$) & She was very nervous about it. \textcolor{red}{But when she woke up, she was relieved.} Her grandmother had passed away. Anette was glad she had put on a wake for her.
+Generated Story (Baseline) & \textcolor{red}{\textit{She was very nervous to wake her grandmother.}} But she was determined to make her grandmother feel better. She put on her grandmother's favorite song. Her grandmother was so happy to see Anette again! \\ \hline
+Generated Story ($\text{Cycle}_{\textsc{exp}}$) & She put the wake in her grandmother's bedroom. Anette went to the kitchen to make breakfast. She made pancakes for her grandmother. \textcolor{red}{\textit{Her grandmother thanked Anette for the wake.}} \\ \hline
+Generated Story ($\text{Cycle}_{\textsc{comp}}$) & She was very nervous about it. \textcolor{red}{\textit{But when she woke up, she was relieved.}} Her grandmother had passed away. Anette was glad she had put on a wake for her.
 \end{tabular}
 \caption{Generated stories by different models for the same input (3)}
 \label{tab:comp-sample-3}
